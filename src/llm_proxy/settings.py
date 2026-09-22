@@ -24,3 +24,9 @@ class Settings(BaseSettings):
 
 def get_settings() -> Settings:
     return Settings()
+
+
+def require_encryption_key(settings: Settings) -> SecretStr:
+    if settings.encryption_key is None:
+        raise ValueError("encryption_key is required for stateful processing")
+    return settings.encryption_key

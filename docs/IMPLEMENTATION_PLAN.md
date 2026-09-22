@@ -96,17 +96,17 @@ Domain-модели не зависят от FastAPI/Redis. Все обязат�
 
 ### Tasks
 
-- [ ] E2.1 Реализовать AES-GCM encrypt/decrypt `SessionRecord`.
-- [ ] E2.2 Encryption key получать только из environment/secret.
-- [ ] E2.3 Уникальный nonce на record; использовать authenticated data для key/version binding.
-- [ ] E2.4 Реализовать `RedisStateStore.get/create_if_absent/update_ttl/delete`.
-- [ ] E2.5 Redis key: `session:{consumer_id}:{sha256(payload_id)}`.
-- [ ] E2.6 Atomic create через `SET NX`.
-- [ ] E2.7 Configurable normal TTL и short post-demask retry TTL.
-- [ ] E2.8 Redis persistence выключить в baseline.
-- [ ] E2.9 Redis не публиковать наружу.
-- [ ] E2.10 Redis unavailable => fail closed, без process-local fallback.
-- [ ] E2.11 Tests: ciphertext не содержит plaintext, concurrent create, TTL expiry, invalid key/tag, Redis failure.
+- [x] E2.1 Реализовать AES-GCM encrypt/decrypt `SessionRecord`.
+- [x] E2.2 Encryption key получать только из environment/secret.
+- [x] E2.3 Уникальный nonce на record; использовать authenticated data для key/version binding.
+- [x] E2.4 Реализовать `RedisStateStore.get/create_if_absent/update_ttl/delete`.
+- [x] E2.5 Redis key: `session:{consumer_id}:{sha256(payload_id)}`.
+- [x] E2.6 Atomic create через `SET NX`.
+- [x] E2.7 Configurable normal TTL и short post-demask retry TTL.
+- [x] E2.8 Redis persistence выключить в baseline.
+- [x] E2.9 Redis не публиковать наружу.
+- [x] E2.10 Redis unavailable => fail closed, без process-local fallback.
+- [x] E2.11 Tests: ciphertext не содержит plaintext, concurrent create, TTL expiry, invalid key/tag, Redis failure.
 
 ### Acceptance
 

@@ -49,7 +49,7 @@ Baseline считается готовым только когда одновр�
 
 ## Запуск
 
-Требования: Python 3.12 и Docker Compose.
+Требования: Python 3.12 и Docker Compose. Для stateful processing задайте `LLM_PROXY_ENCRYPTION_KEY`; без ключа Redis state store отказывает fail-closed.
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -80,4 +80,4 @@ CI использует ту же команду.
 
 ## Текущий этап
 
-E0 завершён: каркас, Redis/Compose, typed settings, `healthz`, `verify` и CI реализованы. `POST /process`, PII engine, encrypted state, quality/load baseline и submission readiness ещё не реализованы.
+E0–E2 завершены: каркас, Redis/Compose, typed settings, `healthz`, encrypted Redis state, `verify` и CI реализованы. `POST /process`, PII engine, quality/load baseline и submission readiness ещё не реализованы.
