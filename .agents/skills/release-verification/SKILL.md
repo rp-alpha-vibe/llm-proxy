@@ -33,7 +33,7 @@ description: Perform brief final acceptance for a nontrivial task or hackathon s
 
 ### A. Packaging и external code check
 
-- ZIP один, разумного размера и содержит только исходный код;
+- ZIP один, разумного размера, собран по allowlist и содержит только исходники решения и минимальные файлы сборки/запуска/конфигурации; внутренние project docs и agent instructions не включены без явного требования организаторов;
 - отсутствуют dependencies, build/output, VCS, coverage, caches, dumps, datasets, media, binaries;
 - обязательная автоматическая проверка качества кода фактически пройдена; если внешнего результата ещё нет, готовность к сдаче не подтверждена.
 
@@ -54,7 +54,7 @@ description: Perform brief final acceptance for a nontrivial task or hackathon s
 - есть positive/format/context/negative/overlap/multiple-PII cases;
 - false positives проверены;
 - exact round-trip восстанавливает исходную строку, включая знаки, пробелы и регистр;
-- отдельные fixtures §5.1 подтверждают демаскирование нового ответа LLM с перестановкой/повторением масок и сохранением текста ответа; один round-trip не доказывает этот сценарий;
+- отдельные fixtures §5.1 подтверждают демаскирование нового ответа LLM с перестановкой/повторением масок и сохранением текста ответа; неизвестные/неоднозначные placeholders остаются без изменения; один round-trip не доказывает этот сценарий;
 - non-PII части текста не повреждаются;
 - качество измерено воспроизводимым локальным corpus по §6.1;
 - локальная метрика не выдаётся за официальный scoring и официальный порог 95% не объявляется пройденным без внешнего evidence.
