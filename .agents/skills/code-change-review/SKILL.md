@@ -28,8 +28,10 @@ description: Read-only review of nontrivial implementation changes for correctne
 - корректны ли state transitions;
 - корректны ли retry/idempotency/concurrent duplicates;
 - для `/process`: retry исходного payload не превращается в demask, а ранее возвращённая mask корректно восстанавливает original;
+- для ответа LLM: восстанавливаются известные маски внутри нового текста ответа, в том числе при перестановке/повторении; сохранённый prompt не подменяет ответ (§5.1 requirements);
 - non-PII текст, порядок сущностей и соседние символы не повреждаются;
 - конфигурация одной consumer-system не меняет политику другой;
+- доступ тестера совместим с официальным запросом; нет несогласованных обязательных auth-полей/заголовков, отключения контроля доступа для всех или использования `payload_id` как удостоверения потребителя (§3.1);
 - новый consumer с существующими правилами не требует правки core-кода;
 - новый detector подключается через принятую точку расширения без переписывания state/routing;
 - тесты не подменяют реальное требование удобной реализационной проверкой.
@@ -43,13 +45,14 @@ description: Read-only review of nontrivial implementation changes for correctne
 | first request | correct result/state? |
 | retry same original | same mask/result without state corruption? |
 | mask -> unmask | exact original restored? |
+| changed LLM reply -> unmask | reply text preserved, repeated/reordered known masks restored, foreign/unknown mapping not disclosed? |
 | concurrent duplicate | race/data corruption? |
 | malformed input | bounded clear failure? |
 | dependency unavailable | safe degradation? |
 | restart | required state recoverable under chosen architecture? |
 | overload | bounded latency/queue/memory and correct 429 behavior? |
 
-Для 429 при scope runtime/load также проверить `Retry-After` и семантику из `docs/REQUIREMENTS.md` §3.
+Для 429 при scope runtime/load также проверить `Retry-After` и семантику из `docs/REQUIREMENTS.md` §3: успешный retry после одиночного 429 и устойчивый 429 после исчерпания попыток — разные исходы.
 
 ## Security/privacy
 

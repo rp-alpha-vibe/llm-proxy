@@ -41,10 +41,11 @@ description: Perform brief final acceptance for a nontrivial task or hackathon s
 
 - сервис доступен по заявленному URL;
 - `POST /process` строго принимает `{payload, payload_id}` и возвращает `{result}`;
+- доступ тестера подтверждён по §3.1: официальный запрос работает при согласованном допуске, несогласованных обязательных полей/заголовков нет, ограничения других потребителей сохранены;
 - mask -> unmask пара работает;
 - retry исходного payload с тем же id идемпотентен и не превращается в demask;
 - concurrent duplicates не повреждают state;
-- 429 использует корректный `Retry-After` и поведение соответствует §3 requirements;
+- 429 использует корректный `Retry-After`; различены успешный retry после одиночного 429 и неуспех после исчерпания попыток (§3 requirements);
 - timeout/failure paths не приводят к серии необработанных invalid responses.
 
 ### C. PII quality
@@ -53,17 +54,18 @@ description: Perform brief final acceptance for a nontrivial task or hackathon s
 - есть positive/format/context/negative/overlap/multiple-PII cases;
 - false positives проверены;
 - exact round-trip восстанавливает исходную строку, включая знаки, пробелы и регистр;
+- отдельные fixtures §5.1 подтверждают демаскирование нового ответа LLM с перестановкой/повторением масок и сохранением текста ответа; один round-trip не доказывает этот сценарий;
 - non-PII части текста не повреждаются;
 - качество измерено воспроизводимым локальным corpus по §6.1;
 - локальная метрика не выдаётся за официальный scoring и официальный порог 95% не объявляется пройденным без внешнего evidence.
 
 ### D. Performance и reliability
 
-- выполнен полный нагрузочный профиль около 5 минут на 1000 RPS;
-- зафиксированы p50/p95/p99, errors, 429, CPU и memory;
-- целевой latency <= 1s проверен;
+- выполнен полный baseline с профилем, определениями метрик и всеми локальными порогами §7.1 requirements;
+- зафиксированы offered и успешный RPS, p50/p95/p99/max latency, попытки, errors, 429, CPU и memory; успехи не раздуты ретраями;
+- превышение любого порога или отсутствие метрики блокирует локальную приёмку; пороги не выдаются за официальный scoring;
 - крупные payload до 100 000 токенов проверены отдельно;
-- retry/concurrency/overload/recovery пройдены;
+- retry/concurrency/recovery пройдены; отдельный overload-профиль проверяет допустимые 429 и восстановление, не заменяя baseline;
 - 2000 RPS относится к bonus и не блокирует baseline.
 
 ### E. Consumer configuration и extensibility
