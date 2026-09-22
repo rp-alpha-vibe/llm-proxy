@@ -1,11 +1,11 @@
 ---
 name: grill-me
-description: Stress-test a material plan or architecture decision through a short Socratic interview. Use only when explicitly invoked with $grill-me.
+description: Stress-test a material plan or architecture decision through a short Socratic interview. Use only when the user explicitly invokes $grill-me or /grill-me.
 ---
 
 # Grill Me
 
-Skill работает только по явному вызову `$grill-me`.
+Skill работает только по явному вызову `$grill-me` или `/grill-me`.
 
 Цель: найти решения, которые ещё не определены и реально могут изменить scope, architecture, security, data handling, performance или acceptance.
 

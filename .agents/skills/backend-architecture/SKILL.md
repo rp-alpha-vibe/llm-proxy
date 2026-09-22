@@ -1,11 +1,11 @@
 ---
 name: backend-architecture
-description: Design the smallest complete backend solution before nontrivial changes to API boundaries, state/storage, concurrency, retry/idempotency, dependencies, security, runtime/deployment, observability, or performance.
+description: Add the smallest complete design to the task brief when changing API/module boundaries, state/storage semantics, concurrency, retry/idempotency, material runtime dependencies, security, deployment or execution/SLO models. Skip local optimizations within accepted boundaries.
 ---
 
 # Backend Architecture
 
-Работай как архитектор, не как implementer.
+Сначала выбери архитектурное решение, затем продолжай реализацию в том же рабочем цикле.
 
 ## Когда использовать
 
@@ -14,10 +14,10 @@ Skill нужен, если реализация должна выбрать ил
 - API/module boundary;
 - state storage;
 - concurrency/retry/idempotency;
-- dependency;
+- существенную runtime-зависимость;
 - security/privacy boundary;
 - runtime/deployment;
-- performance/SLO semantics.
+- модель выполнения/SLO; для локальной оптимизации в принятых границах достаточно `performance-review`.
 
 Локальным изменениям без новых границ skill не нужен.
 
@@ -27,7 +27,9 @@ Skill нужен, если реализация должна выбрать ил
 
 Не проектировать будущие микросервисы, очереди, БД, абстракции и универсальные framework-слои «на потом».
 
-## Architecture Brief
+## Архитектурный раздел общего task brief
+
+Дополни существующий brief. Не повторяй уже записанные требования, Goal и Verification. Заполни только применимые поля:
 
 ```md
 # Architecture Brief
@@ -70,7 +72,7 @@ Decision:
 - rejected material alternative(s), only if relevant
 ```
 
-Обычный brief должен укладываться примерно в 40 строк.
+Обычный архитектурный раздел должен укладываться примерно в 40 строк; простой выбор может занимать несколько предложений.
 
 ## Правило скорости
 

@@ -1,54 +1,53 @@
 ---
 name: release-verification
-description: Final lightweight acceptance gate for a task. Verify fresh tests, acceptance criteria, relevant domain reviews, security hygiene, and known limitations before calling work done.
+description: Perform brief final acceptance for a nontrivial task or hackathon submission. Reuse current verification and review evidence; distinguish task completion from product readiness and block unmet mandatory criteria.
 ---
 
 # Release Verification
 
-Это финальная приёмка, а не ещё один большой аудит.
+Выбери режим: `task` для отдельной задачи или `submission` для готовности к сдаче.
+Это сверка доказательств, а не новый аудит. Не повторяй уже выполненные актуальные проверки.
 
-## Проверить
+## Общие условия
 
-1. Goal достигнут.
-2. Acceptance criteria имеют наблюдаемое доказательство.
-3. Релевантные тесты запущены свежо, результаты и exit codes прочитаны.
-4. Для nontrivial change был `code-change-review`.
-5. Для PII-изменений был `pii-quality-review`.
-6. Для hot-path/runtime/performance изменений был `performance-review`.
-7. Нет открытых P0/P1.
-8. Нет секретов и реальных ПД в diff, fixtures, логах, документации.
-9. Known limitations названы честно.
+1. Goal и обязательные acceptance criteria выполнены и имеют наблюдаемое доказательство.
+2. Применимые проверки соответствуют текущему изменению; результаты и exit codes команд прочитаны.
+3. Для нетривиального изменения выполнен отдельный `code-change-review`, включая применимые доменные разделы.
+4. Нет открытых P0/P1; ограничения названы честно.
+5. В изменениях нет секретов, реальных ПД и небезопасных runtime payloads.
 
-## Три слоя
+Проверки до исправления findings не доказывают исправленное поведение: повтори затронутые проверки и просмотр diff.
+Для документации проверяй согласованность, ссылки и применимые сценарии; не требуй runtime-тестов, если исполняемое поведение не менялось.
 
-### Technical
-lint/typecheck/unit/integration/build/contract tests — только применимые.
+## Режим task
 
-### Engineering
-error handling, idempotency, concurrency, security, observability, recovery — только затронутые.
+- Используй объём из `AGENTS.md`, §4.1.
+- PII/performance/UI — только применимые разделы общего review.
+- Нереализованные будущие функции вне принятого scope перечисли как ограничения продукта; они не означают автоматический провал локальной задачи.
+- Регрессии, обязательные критерии текущей задачи и известные P0/P1 нельзя переносить в follow-up ради статуса Done.
 
-### Domain
-соответствие требованиям хакатона, PII quality и/или performance evidence.
+## Режим submission
 
-## Выход
+Дополнительно проверь:
+
+- все обязательные требования и категории ПД, качество по воспроизводимому корпусу;
+- полный нагрузочный профиль, крупные тексты, retry/concurrency/overload;
+- доступность развёрнутого `POST /process` по контракту;
+- настройки доступа/политик, безопасные логи и метрики, краткую инструкцию настройки;
+- чистый исходный ZIP и результат обязательной автоматической проверки качества кода.
+
+Отсутствующую или не пройденную внешнюю проверку явно пометь как блокер подтверждения готовности к сдаче.
+
+## Короткий выход
 
 ```text
+Mode: task | submission
 Verdict: pass | pass with follow-up | block
-
-Acceptance:
-- ...
-
-Fresh verification:
-- command/check -> result
-
-Reviews:
-- ...
-
-Known limitations:
-- ...
-
-Next safe step:
-- ...
+Acceptance / fresh verification: check -> result
+Review: findings / resolved
+Limitations / next step: ...
 ```
 
-Не создавать отдельные commits/reports только ради доказательства проверки.
+`pass with follow-up` допустим только при выполненных обязательных критериях и неблокирующих замечаниях.
+Невыполненный/непроверенный обязательный критерий или P0/P1 означает `block` и статус `blocked`, не Done. Просто записать блокер недостаточно.
+Не создавать отдельные commits/reports ради приёмки.

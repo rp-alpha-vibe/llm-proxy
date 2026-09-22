@@ -9,13 +9,15 @@ description: Read-only review of nontrivial implementation changes for correctne
 
 ## Вход
 
-Прочитай:
+Используй актуальный контекст; прочитай недостающее или изменившееся:
 
 - `AGENTS.md`;
 - релевантные требования;
-- task brief / requirements brief / architecture brief, если они были;
+- общий task brief и его разделы требований/архитектуры, если они были;
 - полный diff;
 - затронутый код и тесты.
+
+Объём проверки выбирай по `AGENTS.md`, §4.1. Подключай применимые доменные skills как разделы одного review, без повторного чтения того же diff и отдельных отчётов.
 
 ## Pass 1 — Contract and behavior
 
@@ -70,8 +72,9 @@ description: Read-only review of nontrivial implementation changes for correctne
 - P2: существенный bounded weakness;
 - P3: локальная maintainability/clarity проблема.
 
-Верни сначала findings, затем проверенные вещи, затем verdict:
+Верни сначала findings, затем проверенные вещи, затем verdict. Не перечисляй неприменимые пункты ради заполнения отчёта:
 
 `pass | pass with follow-up | block`.
 
 Стандартный change может review-ить тот же агент отдельным проходом.
+Открытый P0/P1 или неподтверждённый обязательный критерий означает `block`. После исправлений перепроверь изменённое поведение и diff; повторяй весь review только при существенном расширении риска.

@@ -1,85 +1,43 @@
 ---
 name: performance-review
-description: Review and measure hot-path/runtime performance against hackathon targets: RPS, latency, large payloads, concurrency, overload behavior and pathological inputs.
+description: Measure changes to HTTP runtime, regex/scanner/NER hot paths, state stores, concurrency, serialization, deployment, batching, caching or rate limiting. Use targeted benchmarks for local edits and broader load tests for shared mechanisms or submission.
 ---
 
 # Performance Review
 
-Используй, если изменение затрагивает:
+Добавь результаты в общий review; не создавай отдельный отчёт без необходимости.
 
-- HTTP runtime;
-- regex/scanners/NER hot path;
-- state store;
-- concurrency;
-- serialization;
-- deployment;
-- batching/caching;
-- rate limiting.
+## Объём измерения
 
-## Targets from requirements
+| Изменение | Достаточное измерение |
+| --- | --- |
+| Локальный regex/detector/serializer | Воспроизводимый benchmark затронутого пути: типичный, длинный и pathological input; сравнение с baseline, если он есть. |
+| State store, concurrency, runtime, caching, deployment | Интеграционная нагрузка, проверяющая изменённый механизм: стабильность, конкуренция, ресурсы и восстановление после перегрузки. |
+| Сдача или заявление о полной производительности | Полный профиль: примерно 5 минут на 1000 RPS, p50/p95/p99, ошибки, 429, CPU и память; отдельно крупные payloads до 100 000 токенов. |
 
-Базовые цели:
+Если локальный benchmark выявил существенную регрессию или изменение влияет на общий поток, расширь проверку до интеграционной.
+Не повторяй полный нагрузочный прогон при каждой локальной правке без такого риска.
 
-- 1000 RPS;
-- latency <= 1s как ориентир;
-- 5 минут нагрузки;
-- large payload support до 100 000 токенов;
-- bonus target: 2000 RPS.
+## Требования и ограничения
 
-Не утверждай, что цель достигнута, без измерения.
+Цели ТЗ: 1000 RPS, latency <= 1s; дополнительный плюс — 2000 RPS.
+Официальный timeout одного запроса — 10s. Не подменяй целевую latency этим timeout.
+Распределение размеров нагрузки в ТЗ не определено: не предполагай, что 1000 RPS и 100 000 токенов относятся к одному профилю.
+Локальный benchmark не доказывает полную пропускную способность сервиса.
 
-## Минимальный профиль
+## Риски затронутого пути
 
-Где применимо, измерить:
+Ищи catastrophic backtracking, квадратичные проходы, повторные полные сканирования, лишние копии больших строк и uncontrolled allocations.
+При изменении concurrency/overload проверь ограниченность очереди и памяти, отсутствие длительных зависаний/каскада 5xx, корректный `Retry-After` для 429 и восстановление.
+Сравнивай результаты при одинаковых данных и окружении; не делай вывод о регрессии из несопоставимых запусков.
 
-- p50/p95/p99 latency;
-- sustained RPS;
-- error rate;
-- 429 rate;
-- CPU;
-- memory;
-- behavior under concurrency.
+## Evidence в общем review
 
-Проверить несколько размеров payload:
+Укажи:
 
-- small;
-- medium;
-- large;
-- worst-case/adversarial для regex или parser.
+- команду, профиль/размеры данных и окружение;
+- наблюдаемый результат и baseline, если он есть;
+- ограничения измерения;
+- verdict: `pass | pass with follow-up | block`.
 
-## Regex / scanner safety
-
-Искать:
-
-- catastrophic backtracking;
-- повторное полное сканирование текста без необходимости;
-- квадратичные проходы;
-- uncontrolled allocations;
-- копирование больших строк на каждом detector-е.
-
-## Overload
-
-Проверить, что перегрузка не приводит к:
-
-- неограниченному росту очереди;
-- runaway memory;
-- длительному зависанию;
-- каскаду 5xx.
-
-Если используется 429, проверить корректный `Retry-After` и восстановление.
-
-## Evidence
-
-Всегда указывать:
-
-- команду/tool;
-- профиль нагрузки;
-- окружение;
-- результат;
-- ограничение измерения.
-
-Вердикт:
-
-`pass | pass with follow-up | block`.
-
-Локальный benchmark не выдавать за production capacity proof.
+Если требуемое измерение выполнить нельзя, не заявляй достижение цели. Непроверенный обязательный критерий текущей задачи означает `block`; дальнейшие цели продукта перечисли отдельно.

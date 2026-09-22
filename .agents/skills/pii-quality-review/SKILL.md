@@ -1,52 +1,36 @@
 ---
 name: pii-quality-review
-description: Review PII detection, masking and unmasking changes against the hackathon categories, variants, false positives, overlaps, context and round-trip behavior.
+description: Review detection, masking and unmasking changes for affected PII categories, false positives, overlaps and exact round-trip behavior. Use all categories for shared-engine changes or submission; reuse the common review.
 ---
 
 # PII Quality Review
 
-Используй после любого изменения detection/masking/unmasking.
+Проверь качество поведения в рамках общего review из `code-change-review`.
 
-Цель: доказать не только наличие detector-а, но и качество поведения.
+## Объём
 
-## 1. Coverage matrix
+- Локальное правило: затронутые категории и категории, с которыми возможны пересечения.
+- Общий scanner, приоритеты spans, offsets или механизм замены/демаскирования: все обязательные категории.
+- Сдача: вся матрица обязательных типов из `docs/REQUIREMENTS.md`, включая ещё не реализованные категории.
+- Быстрый общий regression suite запускай целиком, если доступен. Не повторяй полный ручной разбор всех категорий при локальной правке без риска общей регрессии.
+- Отсутствующая функция вне scope локальной задачи — ограничение готовности продукта. Регрессия, нарушенный acceptance или открытый P0/P1 остаются блокерами по `AGENTS.md`.
 
-Для каждого обязательного типа ПД проверить применимые категории:
+## Матрица для выбранных категорий
 
-- positive basic;
-- formatting variants;
-- case variants;
-- contextual positive;
-- contextual negative / false positive;
-- multiple entities in one text;
-- overlap/conflict with another detector;
-- round-trip mask -> unmask.
+Проверь применимые случаи:
 
-Обязательные типы перечислены в `docs/REQUIREMENTS.md`.
+- positive basic, formatting/case variants;
+- contextual positive и negative / false positive;
+- multiple entities, overlap/conflict;
+- точный round-trip mask -> unmask, включая пробелы, пунктуацию и регистр.
 
-## 2. Особое внимание
+Особое внимание: ФИО vs публичное упоминание, адрес клиента vs отделение банка, личные vs обычные даты, PAN vs другие длинные числа, PIN/CVV в контексте, паспорт/код подразделения и сложные предложения.
 
-Проверять отдельно:
+Для каждого нового правила добавь хотя бы один разумный negative fixture. Не повышай recall маскированием всех похожих фрагментов.
 
-- ФИО vs публичное/неперсональное упоминание;
-- адрес клиента vs адрес организации/отделения;
-- даты рождения vs обычные даты;
-- PAN vs другие длинные числа;
-- PIN/CVV только в достаточном контексте;
-- паспорт и код подразделения;
-- сложные предложения с несколькими ПД.
+## Fixtures и измерение
 
-## 3. False positives важны так же, как recall
-
-Нельзя улучшать recall ценой маскирования каждого похожего фрагмента.
-
-Для каждого нового правила должен существовать хотя бы один negative fixture, если тип допускает разумный false positive.
-
-## 4. Fixtures
-
-Использовать только синтетические данные.
-
-Fixture должен явно содержать:
+Используй только синтетические данные. Fixture содержит:
 
 ```text
 input
@@ -55,28 +39,23 @@ expected detected types
 expected round-trip result
 ```
 
-Если точный формат эталонной маски не подтверждён ТЗ/официальным примером, не выдавать выбранный формат за официальный.
+Для локального изменения проверяй его fixtures и регрессию. Для заявления о качестве продукта используй воспроизводимый корпус и правила измерения из `docs/REQUIREMENTS.md`, §6.1.
+Проверяй результат независимо от реализации: expected spans/результаты должны быть заданы явно, а не вычислены тем же detector-ом.
+Выбранную маску и локальную метрику не выдавай за официальный формат или scoring.
 
-## 5. Overlap
+## Пересечения
 
-При пересечении detector spans проверить:
+Проверь детерминированный приоритет, отсутствие двойной замены, стабильные offsets и сохранность соседнего текста.
 
-- детерминированный приоритет;
-- отсутствие двойной замены;
-- стабильные offsets;
-- отсутствие повреждения соседнего текста.
+## Выход в общем review
 
-## 6. Result
+Укажи только существенное:
 
-Верни:
+- проверенный объём и команду/результат;
+- failing positives, false positives, overlap/round-trip defects;
+- непокрытые обязательные категории для режима submission;
+- ограничения и verdict: `pass | pass with follow-up | block`.
 
-- uncovered required categories;
-- failing positive cases;
-- false positives;
-- overlap/round-trip defects;
-- evidence that passed;
-- verdict: `pass | pass with follow-up | block`.
-
-P0/P1: утечка ПД или систематически неправильный round-trip.
-P2: существенный quality gap.
-P3: локальный edge case/maintainability risk.
+P0/P1: утечка ПД, блокирующее нарушение контракта или систематически неправильный round-trip.
+P2: существенный bounded quality gap; P3: локальная проблема.
+Не понижай обязательный критерий задачи до P2 ради положительного verdict.
