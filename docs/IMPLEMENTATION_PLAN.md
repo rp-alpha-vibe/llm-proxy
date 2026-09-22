@@ -7,6 +7,24 @@ Status: **accepted execution plan**
 
 Цель плана: получить submission-ready baseline как можно быстрее, сохраняя проверяемость после каждого крупного шага. Бонусные функции не входят в baseline.
 
+## Оперативный план до 23 сентября 2026 года, 23:59 МСК
+
+Этот порядок заменяет последовательное выполнение оставшихся эпиков; их обязательные результаты и критерии не отменяются. Цель — получить проверенный кандидат к 17:00–18:00 23 сентября и оставить время на внешнюю проверку и исправления. Verdict `block` при непройденном обязательном критерии не запрещает отправить честно описанный результат до дедлайна (D-006).
+
+| Срок, МСК | Наблюдаемый результат |
+| --- | --- |
+| До 00:30 | E4: добавить отсутствующую dev-зависимость для async-тестов, выполнить clean-environment verify и один реальный HTTP → Redis mask/retry/unmask smoke; короткий review и checkpoint. Доступность публичного URL назначить отдельному исполнителю сразу. |
+| До 02:30 | Первый deployment и ZIP с кодом готовы для ранней проверки на сайте; выяснены поддерживаемый доступ AlfaSonar и доступные примеры масок. Отсутствие сервера/URL — немедленный blocker для deployment-потока. |
+| До 08:00 | Первый общий вариант со всеми обязательными категориями: детекторы, контекст, разрешение пересечений, competition mask и вручную размеченный компактный корпус. |
+| До 12:00 | Интеграционная проверка всех типов, negatives, перекрытий, exact round-trip и нового ответа LLM; исправлены крупнейшие ошибки качества. |
+| До 15:00 | Реальный Redis, security/log leak checks, Latency/RPS/TPS, 300-секундная нагрузка, отдельный профиль до 100 000 токенов и overload/recovery; исправления по измеренным bottlenecks. |
+| До 18:00 | Окончательный ZIP пересобран из проверенного source, из него выполнен clean smoke; deployment совпадает с отправляемой версией; готовы презентация, VCS и URL; внешняя проверка и финальная форма отправки выполняются отдельно. |
+| До 23:59 | Резерв на внешние результаты, прицельные исправления и повтор только затронутых проверок; новых бонусных функций нет. |
+
+Четыре независимых потока: (1) общий registry/overlap/masking и интеграция, (2) structured detectors, (3) contextual/semantic detectors, (4) deployment/ZIP/observability/материалы сдачи. `ProcessService`, Redis session semantics и OverlapResolver имеют одного владельца изменения. Корпус качества создаётся параллельно детекторам; E9 повторно не реализует уже принятое поведение E3. Презентация и иные медиа не включаются в ZIP с кодом.
+
+Экономия scope: искать в исходном тексте или представлении с сохранением длины, поэтому общий offset-map engine не нужен без доказанного изменения длины; выбирать минимальные правила и renderer через принятые интерфейсы; локальную NER-зависимость добавлять только после измеренного quality gap; не строить UI, dashboards, дополнительные стратегии и бонусы. Сохранять все обязательные категории, per-system policy, шифрование и изоляцию state, логи/метрики и измерения качества/нагрузки.
+
 ## 1. Milestones
 
 | Milestone | Состав | Результат |
@@ -16,21 +34,17 @@ Status: **accepted execution plan**
 | M3 — Engineering baseline | E11–E13 | Security/observability/performance подтверждены |
 | M4 — Submission ready | E14–E16 | Совместимость tester, deployment/package и финальная приёмка |
 
-Основной критический путь:
+Основной критический путь после D-006:
 
 ```text
-E0 -> E1 -> E2 -> E3 -> E4 -> E5
-                              |
-                              +-> E6 --+
-                              +-> E7 --+-> E10 -> E11 -> E13 -> E14(final) -> E15 -> E16
-                              +-> E8 -> E9 --+
-
-Параллельные prerequisites:
-E4 -> E12 -------------------------> E13
-E4 -> E14(auth research) ----------> E14(final)
+E4 -> минимальный E5 -> E6/E7/E8 -> E10 -> E13(final) -> E16
+        |                  |            |
+        +-> E15(ранний ZIP/deploy)      +-> E11(final)
+        +-> E12(logs/metrics) ----------> E13(final)
+        +-> E14(contract/auth) ---------> E14(deployed checks) -> E16
 ```
 
-E6/E7/E8 можно вести параллельно после стабилизации E5. Подготовку корпуса E10.1–E10.7 можно начинать после E5, но финальное измерение E10 завершается только после E6–E9. E12 и исследовательскую часть E14 можно начинать после E4.
+E6/E7/E8 и подготовка корпуса E10 идут параллельно после минимального контракта E5; финальное измерение E10 ждёт их интеграции. E12, E14 contract/auth и E15 deployment/packaging начинаются сразу на runnable E4. Поздние зависимости отдельных эпиков означают только их финальную приёмку, не начало работы.
 
 ---
 
@@ -174,6 +188,8 @@ foreign session/consumer -> no disclosure
 HTTP -> policy -> ProcessService -> Redis -> result
 ```
 
+Перед checkpoint M1 проверить этот путь на реальном Redis, mask → retry original → exact unmask, и воспроизводимость async-тестов в чистом dev-окружении. Будущие PII-детекторы, логирование и полная нагрузка не входят в acceptance E4.
+
 **Milestone:** M1.
 
 **Dependencies:** E3.
@@ -279,20 +295,15 @@ Structured suite green; нет известных систематических
 
 ---
 
-## Epic E9 — Product demasking LLM response
+## Epic E9 — Регрессия product demasking для новых масок
 
-**Goal:** восстанавливать ПД внутри нового текста ответа, а не просто возвращать original prompt.
+**Goal:** проверить уже реализованный в E3 mapping-based flow после интеграции новых масок; исправлять только доказанный gap.
 
 ### Tasks
 
-- [ ] E9.1 Построить session mapping rendered mask/placeholder -> original entity.
-- [ ] E9.2 Поддержать reorder известных placeholders.
-- [ ] E9.3 Поддержать repeated placeholder.
-- [ ] E9.4 Отсутствующая в response сущность не добавляется.
-- [ ] E9.5 Unknown/ambiguous placeholder не угадывается и остаётся в response без изменения; остальные известные mappings продолжают восстанавливаться.
-- [ ] E9.6 Foreign session/consumer mapping не используется.
-- [ ] E9.7 Новый surrounding text, пробелы и punctuation сохраняются.
-- [ ] E9.8 Synthetic response fixtures без реального LLM call.
+- [ ] E9.1 Проверить E3 flow на competition masks и placeholders: reorder, repeat, missing и unknown/ambiguous tokens.
+- [ ] E9.2 Проверить изоляцию session/consumer и сохранение нового текста, пробелов и пунктуации на синтетическом ответе LLM.
+- [ ] E9.3 Исправить только выявленный регрессией gap, не вводя второй state machine.
 
 ### Acceptance
 
@@ -429,7 +440,7 @@ Baseline проходит требования проекта; large payload pro
 
 Официальный request format проходит полный flow; access policy не ломает tester contract.
 
-**Dependencies:** E4 для E14.1–E14.4 (contract/auth research можно и нужно закрывать рано); E13 для deployed checks E14.5–E14.6 и финального acceptance эпика.
+**Dependencies:** E4 для E14.1–E14.4 и раннего deployed smoke E14.5; финальный E14.5–E14.6 повторяется после integration/performance changes. Не ждать E13 для начала проверки официального доступа.
 
 ---
 
@@ -449,12 +460,13 @@ Baseline проходит требования проекта; large payload pro
 - [ ] E15.8 Script повторно открывает ZIP и проверяет blacklist.
 - [ ] E15.9 Инструкция настройки consumer <= 5 предложений.
 - [ ] E15.10 Clean-environment smoke из содержимого submission package.
+- [ ] E15.11 Подготовить отдельную краткую презентацию, проверяемую ссылку на VCS и публичный URL для обязательных полей финальной формы; медиа не включать в source ZIP.
 
 ### Acceptance
 
 Clean ZIP проходит self-inspection, из его содержимого сервис можно собрать/запустить, deployed endpoint доступен.
 
-**Dependencies:** E14.
+**Dependencies:** runnable E4 для первого ZIP/deploy. Финальный ZIP и deployed checks выполняются повторно после интеграции E6–E13 и уточнения E14.
 
 ---
 
@@ -474,10 +486,11 @@ Clean ZIP проходит self-inspection, из его содержимого �
 - [ ] E16.8 Documentation/known limitations gate.
 - [ ] E16.9 Любой непроверенный mandatory criterion => `block`, не Done.
 - [ ] E16.10 После исправления blocker повторить только затронутые проверки, затем финальный gate.
+- [ ] E16.11 Проверить обе операции сайта: внешнюю проверку ZIP и отдельную окончательную отправку ZIP, презентации, VCS и URL до 23 сентября, 23:59 МСК.
 
 ### Acceptance
 
-`release-verification: submission -> pass`, обязательная внешняя code-quality проверка пройдена, deployed endpoint доступен.
+Для verdict `pass`: `release-verification: submission -> pass`, обязательная внешняя code-quality проверка пройдена, deployed endpoint доступен. При `block` до дедлайна разрешена отправка имеющегося результата с явным указанием непроверенных/проваленных критериев; отправка не меняет verdict.
 
 **Milestone:** M4 / Submission ready.
 
