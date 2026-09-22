@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 from typing import Protocol, Self
 
@@ -11,6 +12,16 @@ from llm_proxy.masking.base import (
 )
 
 SessionEntity = MaskedEntity
+
+
+def make_session_key(consumer_id: str, payload_id: str) -> str:
+    if not consumer_id.strip():
+        raise ValueError("consumer_id must not be blank")
+    if not payload_id.strip():
+        raise ValueError("payload_id must not be blank")
+
+    payload_hash = hashlib.sha256(payload_id.encode("utf-8")).hexdigest()
+    return f"session:{consumer_id}:{payload_hash}"
 
 
 class SessionRecord(BaseModel):
@@ -54,6 +65,15 @@ class SessionRecord(BaseModel):
         ids = [entity.stable_entity_id for entity in self.entities]
         if len(ids) != len(set(ids)):
             raise ValueError("stable_entity_id must be unique within a session")
+        return self
+
+    @model_validator(mode="after")
+    def entity_spans_must_be_within_original(self) -> Self:
+        for entity in self.entities:
+            if entity.original_start >= len(self.original_text) or entity.original_end > len(
+                self.original_text
+            ):
+                raise ValueError("entity span must be within original_text")
         return self
 
     def get_entity_by_mask(self, rendered_mask: str) -> SessionEntity | None:

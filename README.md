@@ -80,4 +80,4 @@ CI использует ту же команду.
 
 ## Текущий этап
 
-E0–E2 завершены: каркас, Redis/Compose, typed settings, `healthz`, encrypted Redis state, `verify` и CI реализованы. `POST /process`, PII engine, quality/load baseline и submission readiness ещё не реализованы.
+E0–E3 завершены: каркас, Redis/Compose, typed settings, `healthz`, encrypted Redis state, ProcessService state machine, `verify` и CI реализованы. Публичный `POST /process`, consumer policy/auth, PII engine, quality/load baseline и submission readiness ещё не реализованы.

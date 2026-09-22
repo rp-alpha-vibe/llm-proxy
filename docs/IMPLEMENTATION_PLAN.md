@@ -122,16 +122,16 @@ Domain-модели не зависят от FastAPI/Redis. Все обязат�
 
 ### Tasks
 
-- [ ] E3.1 New `payload_id`: detect -> mask -> encrypted session -> `SET NX`.
-- [ ] E3.2 Если `SET NX` проигран race, перечитать winning session и классифицировать запрос снова.
-- [ ] E3.3 Existing session + original payload => вернуть ту же mask.
-- [ ] E3.4 Existing session + exact stored mask => вернуть exact original.
-- [ ] E3.5 Existing session + другой payload + `allow_demask=true` => mapping-based product demask.
-- [ ] E3.6 `allow_demask=false` реально запрещает demask.
-- [ ] E3.7 Unknown/ambiguous masks/placeholders не угадывать и не искать в других sessions/consumers; в product demask оставлять их в тексте без изменения.
-- [ ] E3.8 Consumer/session isolation tests.
-- [ ] E3.9 Concurrent duplicate tests.
-- [ ] E3.10 Redis loss/restart => controlled safe failure.
+- [x] E3.1 New `payload_id`: detect -> mask -> encrypted session -> `SET NX`.
+- [x] E3.2 Если `SET NX` проигран race, перечитать winning session и классифицировать запрос снова.
+- [x] E3.3 Existing session + original payload => вернуть ту же mask.
+- [x] E3.4 Existing session + exact stored mask => вернуть exact original.
+- [x] E3.5 Existing session + другой payload + `allow_demask=true` => mapping-based product demask.
+- [x] E3.6 `allow_demask=false` реально запрещает demask.
+- [x] E3.7 Unknown/ambiguous masks/placeholders не угадывать и не искать в других sessions/consumers; в product demask оставлять их в тексте без изменения.
+- [x] E3.8 Consumer/session isolation tests.
+- [x] E3.9 Concurrent duplicate tests.
+- [x] E3.10 Redis loss/restart => controlled safe failure.
 
 Для E3 detector/mask strategy может быть простым stub, чтобы сначала доказать state semantics.
 

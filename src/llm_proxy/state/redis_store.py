@@ -1,10 +1,9 @@
-import hashlib
 from typing import Any, Final
 
 import redis.asyncio as redis
 
 from .crypto import SessionRecordCodec
-from .models import SessionRecord, StateStore
+from .models import SessionRecord, StateStore, make_session_key
 
 _DEFAULT_SOCKET_TIMEOUT: Final = 1.0
 
@@ -37,13 +36,7 @@ class RedisStateStore(StateStore):
 
     @staticmethod
     def make_key(consumer_id: str, payload_id: str) -> str:
-        if not consumer_id.strip():
-            raise ValueError("consumer_id must not be blank")
-        if not payload_id.strip():
-            raise ValueError("payload_id must not be blank")
-
-        payload_hash = hashlib.sha256(payload_id.encode("utf-8")).hexdigest()
-        return f"session:{consumer_id}:{payload_hash}"
+        return make_session_key(consumer_id, payload_id)
 
     async def get(self, redis_key: str) -> SessionRecord | None:
         value = await self._redis.get(redis_key)
