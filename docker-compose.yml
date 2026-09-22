@@ -1,0 +1,19 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  app:
+    build: .
+    environment:
+      LLM_PROXY_REDIS_URL: redis://redis:6379/0
+      LLM_PROXY_CONFIG_PATH: /app/config/systems.example.yaml
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"

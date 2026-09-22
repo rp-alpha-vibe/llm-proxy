@@ -47,22 +47,37 @@ Baseline считается готовым только когда одновр�
 Реализацию выполняет DeepSeek. Общая точка входа — `AGENTS.md`; канонические skills находятся в `.agents/skills/`.
 Если клиент не загружает их автоматически, передать `AGENTS.md` и нужный `.agents/skills/<name>/SKILL.md` явно.
 
+## Запуск
+
+Требования: Python 3.12 и Docker Compose.
+
+```bash
+python -m pip install -e ".[dev]"
+docker compose up --build -d
+```
+
+Проверить сервис:
+
+```bash
+curl http://localhost:8000/healthz
+```
+
+Остановить локальный стек:
+
+```bash
+docker compose down
+```
+
+## Проверка
+
+Одна команда запускает formatter, lint, typecheck и pytest:
+
+```bash
+python scripts/verify.py
+```
+
+CI использует ту же команду.
+
 ## Текущий этап
 
-Подготовлены требования, архитектура и детальный план реализации. Каркас сервиса, команды запуска, тесты и CI пока не реализованы; submission readiness не подтверждена.
-
-## Следующая инженерная задача — E0
-
-Начать с Epic E0 из [плана реализации](docs/IMPLEMENTATION_PLAN.md): создать минимальный запускаемый каркас и единую воспроизводимую проверку проекта.
-
-Критерии готовности E0:
-
-- из clean checkout устанавливаются зависимости;
-- локальный Redis запускается;
-- приложение стартует и `GET /healthz` возвращает 200;
-- одна документированная команда `verify` запускает применимые formatter/lint/typecheck/tests;
-- CI запускает ту же `verify`-команду;
-- есть безопасные config examples, Dockerfile и ignore rules;
-- README содержит только реально работающие install/run/verify команды.
-
-`/process`, state machine, PII engine и полный quality/load baseline реализуются следующими эпиками, а не входят в E0.
+E0 завершён: каркас, Redis/Compose, typed settings, `healthz`, `verify` и CI реализованы. `POST /process`, PII engine, encrypted state, quality/load baseline и submission readiness ещё не реализованы.

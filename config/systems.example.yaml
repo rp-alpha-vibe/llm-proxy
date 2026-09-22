@@ -1,0 +1,15 @@
+systems:
+  alfa_tester:
+    enabled: true
+    pii_types: all
+    allow_demask: true
+    mask_strategy: competition
+  demo:
+    enabled: true
+    pii_types:
+      - person
+      - phone
+      - email
+      - card
+    allow_demask: true
+    mask_strategy: placeholder

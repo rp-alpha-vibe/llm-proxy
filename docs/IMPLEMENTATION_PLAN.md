@@ -40,18 +40,18 @@ E6/E7/E8 можно вести параллельно после стабили�
 
 ### Tasks
 
-- [ ] E0.1 Создать Python 3.12 project и `pyproject.toml`.
-- [ ] E0.2 Создать `src/llm_proxy` и FastAPI application factory.
-- [ ] E0.3 Реализовать `GET /healthz`.
-- [ ] E0.4 Добавить Redis в local Docker Compose.
-- [ ] E0.5 Добавить typed settings: Redis URL, encryption key, TTL, concurrency, config path.
-- [ ] E0.6 Добавить `config/systems.example.yaml` без реальных секретов.
-- [ ] E0.7 Настроить formatter/lint/typecheck/pytest.
-- [ ] E0.8 Создать одну быструю команду `verify` для локальной проверки.
-- [ ] E0.9 CI должен запускать ту же `verify` команду.
-- [ ] E0.10 Настроить `.gitignore` для env/cache/coverage/build/runtime.
-- [ ] E0.11 Добавить минимальный Dockerfile.
-- [ ] E0.12 Обновить README только реально работающими install/run/verify командами.
+- [x] E0.1 Создать Python 3.12 project и `pyproject.toml`.
+- [x] E0.2 Создать `src/llm_proxy` и FastAPI application factory.
+- [x] E0.3 Реализовать `GET /healthz`.
+- [x] E0.4 Добавить Redis в local Docker Compose.
+- [x] E0.5 Добавить typed settings: Redis URL, encryption key, TTL, concurrency, config path.
+- [x] E0.6 Добавить `config/systems.example.yaml` без реальных секретов.
+- [x] E0.7 Настроить formatter/lint/typecheck/pytest.
+- [x] E0.8 Создать одну быструю команду `verify` для локальной проверки.
+- [x] E0.9 CI должен запускать ту же `verify` команду.
+- [x] E0.10 Настроить `.gitignore` для env/cache/coverage/build/runtime.
+- [x] E0.11 Добавить минимальный Dockerfile.
+- [x] E0.12 Обновить README только реально работающими install/run/verify командами.
 
 ### Acceptance
 
