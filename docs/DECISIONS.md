@@ -63,3 +63,27 @@ Decision:
 Reason:
 
 Владелец одобрил уточнения по сверке с ТЗ. Приёмка должна обнаруживать возврат исходного prompt вместо ответа LLM, несовместимость доступа тестера и подмену успешного RPS поданной нагрузкой.
+
+## D-005 — Минимальная архитектура llm-proxy
+
+Status: accepted
+
+Decision:
+
+- runtime: Python 3.12 + FastAPI + несколько Uvicorn worker processes;
+- shared correlation state: Redis, ephemeral, persistence off by default;
+- sensitive session state хранить только в AES-GCM encrypted form с ограниченным TTL; ключ инжектируется через secret/environment;
+- `ProcessService` владеет state machine mask/retry/exact-unmask/LLM-response-unmask;
+- PII detection выполняется локально in-process; network LLM/NER calls в hot path не допускаются;
+- detectors, contextual resolution, overlap resolution и mask strategy разделены;
+- baseline имеет `CompetitionMaskStrategy` для официальной проверки и `TokenMaskStrategy` для однозначного product LLM-response demask;
+- per-system policies отделены от core flow через `ConsumerResolver`/`PolicyRegistry`;
+- способ идентификации AlfaSonar остаётся адаптируемой границей до официального подтверждения и не меняет тело `/process`;
+- overload ограничивается bounded concurrency с 429/Retry-After; Redis failure — fail closed;
+- deployment baseline: один app service + Redis; остальные инфраструктурные компоненты не добавляются без evidence.
+
+Canonical design: `docs/ARCHITECTURE.md`.
+
+Reason:
+
+Архитектура закрывает обязательный API, качество/расширяемость PII, exact и product demask, shared state для нескольких workers, безопасность и целевые метрики при минимальном количестве runtime-компонентов. Владелец проекта явно одобрил её как baseline.
