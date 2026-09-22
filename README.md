@@ -38,6 +38,7 @@ Baseline считается готовым только когда одновр�
 - [AGENTS.md](AGENTS.md) — лёгкий процесс разработки, review и приёмки.
 - [Требования](docs/REQUIREMENTS.md) — что именно обязано работать для успешной сдачи.
 - [Архитектура](docs/ARCHITECTURE.md) — принятый runtime, state, PII pipeline, masking и deployment.
+- [План реализации](docs/IMPLEMENTATION_PLAN.md) — эпики, подзадачи, зависимости и milestones до submission.
 - [Решения](docs/DECISIONS.md) — только важные принятые решения.
 - [Skills](.agents/skills/) — requirements, architecture, review, PII quality, performance и release verification.
 
@@ -46,7 +47,7 @@ Baseline считается готовым только когда одновр�
 
 ## Текущий этап
 
-Подготовлены требования и правила работы ИИ. Каркас сервиса, команды запуска, тесты и CI пока не реализованы; submission readiness не подтверждена.
+Подготовлены требования, архитектура и детальный план реализации. Каркас сервиса, команды запуска, тесты и CI пока не реализованы; submission readiness не подтверждена.
 
 ## Первая инженерная задача
 
