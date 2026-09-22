@@ -20,13 +20,14 @@ Status: **accepted execution plan**
 
 ```text
 E0 -> E1 -> E2 -> E3 -> E4 -> E5
-                         |       |
-                         |       +-> E6 --+
-                         |       +-> E7 --+-> E10 -> E11 -> E13 -> E14(final) -> E15 -> E16
-                         |       +-> E8 -> E9 --+
-                         |
-                         +-> E12 --------------------+
-                         +-> E14(auth research) -----+
+                              |
+                              +-> E6 --+
+                              +-> E7 --+-> E10 -> E11 -> E13 -> E14(final) -> E15 -> E16
+                              +-> E8 -> E9 --+
+
+Параллельные prerequisites:
+E4 -> E12 -------------------------> E13
+E4 -> E14(auth research) ----------> E14(final)
 ```
 
 E6/E7/E8 можно вести параллельно после стабилизации E5. Подготовку корпуса E10.1–E10.7 можно начинать после E5, но финальное измерение E10 завершается только после E6–E9. E12 и исследовательскую часть E14 можно начинать после E4.
@@ -284,9 +285,9 @@ Structured suite green; нет известных систематических
 
 ### Tasks
 
-- [ ] E9.1 Построить session mapping rendered mask/token -> original entity.
-- [ ] E9.2 Поддержать reorder известных tokens.
-- [ ] E9.3 Поддержать repeated token.
+- [ ] E9.1 Построить session mapping rendered mask/placeholder -> original entity.
+- [ ] E9.2 Поддержать reorder известных placeholders.
+- [ ] E9.3 Поддержать repeated placeholder.
 - [ ] E9.4 Отсутствующая в response сущность не добавляется.
 - [ ] E9.5 Unknown/ambiguous placeholder не угадывается и остаётся в response без изменения; остальные известные mappings продолжают восстанавливаться.
 - [ ] E9.6 Foreign session/consumer mapping не используется.
