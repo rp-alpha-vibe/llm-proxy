@@ -217,7 +217,7 @@ systems:
     enabled: true
     pii_types: [person, phone, email, card]
     allow_demask: true
-    mask_strategy: token
+    mask_strategy: placeholder
 ```
 
 Policy одной системы не влияет на другую.
@@ -248,6 +248,8 @@ detect(text, enabled_types) -> list[Detection]
 - `end`;
 - `confidence`;
 - `evidence/context` при необходимости для review/debug без raw PII в runtime logs.
+
+Final `Detection.type` должен однозначно отображаться на конкретную обязательную категорию `PiiType` из requirements. Общие parser/scanner-компоненты можно переиспользовать, но policy-visible типы не должны схлопывать семантически разные обязательные категории, например дату рождения и дату выдачи паспорта; обязательные компоненты адреса должны оставаться идентифицируемыми.
 
 Pipeline:
 
@@ -332,16 +334,18 @@ Detection[] -> MaskStrategy -> MaskResult
 Baseline interfaces:
 
 - `CompetitionMaskStrategy` — формат, выбранный для официального scoring после проверки доступных примеров;
-- `TokenMaskStrategy` — уникальные stable placeholders для надёжного product LLM-response demask.
+- `PlaceholderMaskStrategy` — уникальные stable placeholders для надёжного product LLM-response demask.
 
-Пример token strategy:
+`PlaceholderMaskStrategy` — внутренняя стратегия маскирования baseline, а не заявленная бонусная tokenization/detokenization feature из ТЗ. Полноценная настраиваемая токенизация остаётся bonus backlog.
+
+Пример placeholder strategy:
 
 ```text
 [[PII:PERSON:1]]
 [[PII:EMAIL:2]]
 ```
 
-Token strategy не объявляется официальным форматом Альфы.
+Placeholder strategy не объявляется официальным форматом Альфы.
 Competition strategy не должна зашиваться внутрь detectors.
 
 ## 10. Demasking
@@ -364,10 +368,10 @@ return original_text
 - восстанавливать только однозначно встреченные известные masks/tokens;
 - поддерживать повторение и перестановку;
 - сохранять весь новый non-PII текст ответа;
-- неизвестные masks оставлять безопасно необработанными/ошибочными согласно принятому policy, но не угадывать;
+- неизвестные или неоднозначные masks/placeholders оставлять в тексте без изменения; не угадывать и не превращать наличие одного неизвестного фрагмента в отказ всего ответа;
 - никогда не использовать mapping другой session/consumer.
 
-Token strategy является надёжным вариантом для product LLM flow.
+Placeholder strategy является надёжным вариантом для product LLM flow.
 Для competition masks product demask выполняется только там, где mapping однозначен.
 
 ## 11. Overload и failure behavior
@@ -508,7 +512,7 @@ src/llm_proxy/
 ├── masking/
 │   ├── base.py
 │   ├── competition.py
-│   └── token.py
+│   └── placeholder.py
 ├── state/
 │   ├── models.py
 │   ├── redis_store.py
