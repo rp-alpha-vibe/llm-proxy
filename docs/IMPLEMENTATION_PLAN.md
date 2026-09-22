@@ -3,7 +3,7 @@
 Status: **accepted execution plan**
 
 Этот документ превращает [REQUIREMENTS.md](REQUIREMENTS.md) и [ARCHITECTURE.md](ARCHITECTURE.md) в последовательность реализации.
-Он не меняет требования и архитектуру. При конфликте приоритет имеют `AGENTS.md`, `REQUIREMENTS.md`, `DECISIONS.md` и `ARCHITECTURE.md`.
+Он не меняет требования и архитектуру. `AGENTS.md` задаёт процесс работы; содержательно план подчиняется `REQUIREMENTS.md`, `DECISIONS.md` и `ARCHITECTURE.md`.
 
 Цель плана: получить submission-ready baseline как можно быстрее, сохраняя проверяемость после каждого крупного шага. Бонусные функции не входят в baseline.
 
@@ -20,15 +20,16 @@ Status: **accepted execution plan**
 
 ```text
 E0 -> E1 -> E2 -> E3 -> E4 -> E5
+                         |       |
+                         |       +-> E6 --+
+                         |       +-> E7 --+-> E10 -> E11 -> E13 -> E14(final) -> E15 -> E16
+                         |       +-> E8 -> E9 --+
                          |
-                         +-> E6 --+
-                         +-> E7 --+-> E8 -> E9 -> E10
-                                      |
-E11 -------------------------------+  |
-E12 -------------------------------+-> E13 -> E14 -> E15 -> E16
+                         +-> E12 --------------------+
+                         +-> E14(auth research) -----+
 ```
 
-E6/E7/E10 можно частично вести параллельно после стабилизации contracts из E1/E5.
+E6/E7/E8 можно вести параллельно после стабилизации E5. Подготовку корпуса E10.1–E10.7 можно начинать после E5, но финальное измерение E10 завершается только после E6–E9. E12 и исследовательскую часть E14 можно начинать после E4.
 
 ---
 
@@ -126,7 +127,7 @@ Domain-модели не зависят от FastAPI/Redis. Все обязат�
 - [ ] E3.4 Existing session + exact stored mask => вернуть exact original.
 - [ ] E3.5 Existing session + другой payload + `allow_demask=true` => mapping-based product demask.
 - [ ] E3.6 `allow_demask=false` реально запрещает demask.
-- [ ] E3.7 Unknown/ambiguous masks не угадывать и не искать в других sessions.
+- [ ] E3.7 Unknown/ambiguous masks/placeholders не угадывать и не искать в других sessions/consumers; в product demask оставлять их в тексте без изменения.
 - [ ] E3.8 Consumer/session isolation tests.
 - [ ] E3.9 Concurrent duplicate tests.
 - [ ] E3.10 Redis loss/restart => controlled safe failure.
@@ -264,7 +265,7 @@ Structured suite green; нет известных систематических
 - [ ] E8.2 Реализовать `CompetitionMaskStrategy`.
 - [ ] E8.3 Подтверждённые примеры ТЗ использовать как regression fixtures.
 - [ ] E8.4 Не вшивать competition rendering в detectors.
-- [ ] E8.5 Реализовать `TokenMaskStrategy` с stable unique placeholders для product flow.
+- [ ] E8.5 Реализовать `PlaceholderMaskStrategy` со stable unique placeholders для product flow; это внутренняя baseline mask strategy, а не bonus tokenization/detokenization.
 - [ ] E8.6 Повтор одной сущности в session должен иметь стабильную identity.
 - [ ] E8.7 Гарантировать invariant: текст вне PII spans не изменяется.
 - [ ] E8.8 Проверить mask collision/ambiguity safety.
@@ -287,7 +288,7 @@ Structured suite green; нет известных систематических
 - [ ] E9.2 Поддержать reorder известных tokens.
 - [ ] E9.3 Поддержать repeated token.
 - [ ] E9.4 Отсутствующая в response сущность не добавляется.
-- [ ] E9.5 Unknown/ambiguous token не угадывается.
+- [ ] E9.5 Unknown/ambiguous placeholder не угадывается и остаётся в response без изменения; остальные известные mappings продолжают восстанавливаться.
 - [ ] E9.6 Foreign session/consumer mapping не используется.
 - [ ] E9.7 Новый surrounding text, пробелы и punctuation сохраняются.
 - [ ] E9.8 Synthetic response fixtures без реального LLM call.
@@ -325,7 +326,7 @@ Synthetic LLM response с reordered/repeated known masks даёт ожидаем
 
 **Milestone:** M2.
 
-**Dependencies:** E6, E7, E8, E9.
+**Dependencies:** E5 для подготовки E10.1–E10.7; E6, E7, E8, E9 для финального quality runner/gate E10.8–E10.12.
 
 ---
 
@@ -343,7 +344,7 @@ Synthetic LLM response с reordered/repeated known masks даёт ожидаем
 - [ ] E11.6 Cross-session demask isolation.
 - [ ] E11.7 Реальный TTL cleanup.
 - [ ] E11.8 Ошибки/exception responses не содержат PII/stack traces.
-- [ ] E11.9 Внешний deployment: HTTPS baseline; HTTP только внутри защищённого контура либо за TLS termination.
+- [ ] E11.9 Использовать HTTPS/TLS termination, если deployment platform это предоставляет; не вводить собственный TLS как обязательный blocker, поскольку официальный tester допускает HTTP.
 
 ### Acceptance
 
@@ -359,8 +360,8 @@ Security tests не находят raw PII/secrets в logs, metrics, repository 
 
 ### Tasks
 
-- [ ] E12.1 Один structured completion event на operation.
-- [ ] E12.2 Completion log содержит operation/status/latency/pii types/count и stage timings без raw PII.
+- [ ] E12.1 Baseline использует один structured completion event на operation, если этого достаточно для наблюдаемости без лишнего log volume; отдельные stage-events не обязательны.
+- [ ] E12.2 Completion log должен делать наблюдаемыми основные processing stages через безопасные stage/status/timing metadata и содержать operation/status/latency/pii types/count без raw PII.
 - [ ] E12.3 Реализовать metrics:
   - requests_total;
   - responses_total;
@@ -427,7 +428,7 @@ Baseline проходит требования проекта; large payload pro
 
 Официальный request format проходит полный flow; access policy не ломает tester contract.
 
-**Dependencies:** E13; вопрос auth можно исследовать раньше параллельно.
+**Dependencies:** E4 для E14.1–E14.4 (contract/auth research можно и нужно закрывать рано); E13 для deployed checks E14.5–E14.6 и финального acceptance эпика.
 
 ---
 
@@ -439,11 +440,11 @@ Baseline проходит требования проекта; large payload pro
 
 - [ ] E15.1 Production Docker image.
 - [ ] E15.2 App + private Redis topology.
-- [ ] E15.3 Внешний HTTPS либо platform TLS termination.
+- [ ] E15.3 Использовать внешний HTTPS/platform TLS termination, если он доступен; HTTP остаётся допустимым для официального tester согласно контракту.
 - [ ] E15.4 Runtime secrets/config только через environment/secret.
 - [ ] E15.5 Создать `scripts/package.py`.
-- [ ] E15.6 ZIP содержит только source/config/docs, нужные для проверки.
-- [ ] E15.7 Автоматически исключить `.git`, envs, cache, coverage, build/dist, runtime data, datasets, media, IDE files.
+- [ ] E15.6 ZIP строится по allowlist и содержит только исходники решения и минимальные файлы, необходимые для его сборки/запуска/конфигурации; внутренние project docs и agent instructions не включаются без явного требования организаторов.
+- [ ] E15.7 Автоматически исключить `.git`, `.agents`, внутренние `docs/`, envs, cache, coverage, build/dist, runtime data, datasets, media, IDE files.
 - [ ] E15.8 Script повторно открывает ZIP и проверяет blacklist.
 - [ ] E15.9 Инструкция настройки consumer <= 5 предложений.
 - [ ] E15.10 Clean-environment smoke из содержимого submission package.
@@ -489,7 +490,7 @@ Clean ZIP проходит self-inspection, из его содержимого �
 
 - E6 structured detectors;
 - E7 semantic/contextual detectors;
-- подготовку quality corpus E10;
+- подготовку quality corpus E10.1–E10.7;
 - E12 observability;
 - k6 scenario из E13;
 - packaging tooling из E15.
