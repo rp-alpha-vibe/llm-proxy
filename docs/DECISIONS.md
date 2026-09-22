@@ -76,7 +76,9 @@ Decision:
 - `ProcessService` владеет state machine mask/retry/exact-unmask/LLM-response-unmask;
 - PII detection выполняется локально in-process; network LLM/NER calls в hot path не допускаются;
 - detectors, contextual resolution, overlap resolution и mask strategy разделены;
-- baseline имеет `CompetitionMaskStrategy` для официальной проверки и `TokenMaskStrategy` для однозначного product LLM-response demask;
+- baseline имеет `CompetitionMaskStrategy` для официальной проверки и внутреннюю `PlaceholderMaskStrategy` для однозначного product LLM-response demask; placeholder strategy не заявляется бонусной tokenization/detokenization feature;
+- unknown/ambiguous placeholders при product demask остаются в тексте без изменения; guessing и cross-session/cross-consumer lookup запрещены;
+- final PII type должен однозначно соответствовать обязательной policy-visible категории, даже если общий parser переиспользуется несколькими detectors;
 - per-system policies отделены от core flow через `ConsumerResolver`/`PolicyRegistry`;
 - способ идентификации AlfaSonar остаётся адаптируемой границей до официального подтверждения и не меняет тело `/process`;
 - overload ограничивается bounded concurrency с 429/Retry-After; Redis failure — fail closed;
