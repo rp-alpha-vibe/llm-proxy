@@ -39,7 +39,14 @@ _BARE_LABEL_STOP = re.compile(
     rf"(?<![A-Za-z{CYR}])(?:индекс|получател|телефон|контактн|email|e-mail|фио)\b",
     re.IGNORECASE,
 )
-_BARE_NAME = rf"[{CYR_UPPER}][{CYR_LOWER}-]+(?:[ \t]+[{CYR_UPPER}][{CYR_LOWER}-]+)*"
+_NAME_WORD = rf"[{CYR_UPPER}][{CYR_LOWER}-]+"
+_BARE_NAME = rf"{_NAME_WORD}(?:[ \t]+{_NAME_WORD})*"
+# Stop multi-word city/street before the next address component (no commas required).
+# Do not use IGNORECASE on these patterns: it would let "улица" match as a name word.
+_VALUE_STOP = (
+    r"(?=,|;|\.|$|"
+    rf"\s+(?:ул\.|[\u0423\u0443]лица|\u0434\.|[Дд]ом|кв\.|[Кк]вартира|[Ии]ндекс|[Гг]ород|{G_DOT}))"
+)
 _BARE_SEGMENT = re.compile(_BARE_NAME)
 _SKIP_SEGMENT = re.compile(
     r"^(?:\u0434\.|дом|кв\.|квартира|индекс)\b",
@@ -91,29 +98,25 @@ _PARTS: tuple[tuple[PiiType, re.Pattern[str]], ...] = (
     (
         PiiType.ADDRESS_CITY,
         re.compile(
-            rf"(?<![{CYR}])(?:{G_DOT}|город)\s*{_BARE_NAME}",
-            re.IGNORECASE,
+            rf"(?<![{CYR}])(?:{G_DOT}|[Гг]ород)\s*{_BARE_NAME}{_VALUE_STOP}",
         ),
     ),
     (
         PiiType.ADDRESS_STREET,
         re.compile(
-            rf"(?<![{CYR}])(?:ул\.|улица)\s*{_BARE_NAME}",
-            re.IGNORECASE,
+            rf"(?<![{CYR}])(?:ул\.|[\u0423\u0443]лица)\s*{_BARE_NAME}{_VALUE_STOP}",
         ),
     ),
     (
         PiiType.ADDRESS_BUILDING,
         re.compile(
-            rf"(?<![{CYR}])(?:\u0434\.|дом)\s*(?P<value>\d+[0-9A-Za-z{CYR}]?)",
-            re.IGNORECASE,
+            rf"(?<![{CYR}])(?:\u0434\.|[Дд]ом)\s*(?P<value>\d+[0-9A-Za-z{CYR}]?)",
         ),
     ),
     (
         PiiType.ADDRESS_UNIT,
         re.compile(
-            rf"(?<![{CYR}])(?:кв\.|квартира)\s*(?P<value>\d+)",
-            re.IGNORECASE,
+            rf"(?<![{CYR}])(?:кв\.|[Кк]вартира)\s*(?P<value>\d+)",
         ),
     ),
 )

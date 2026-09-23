@@ -24,8 +24,11 @@ _RECIPIENT_STRONG = re.compile(
     r"получател(?:ь|я|ю|ем)?\s*(?::|\s+заказа\b)",
     re.IGNORECASE,
 )
-# Bare label immediately before a capitalized name (not award/grant nouns).
-_RECIPIENT_BEFORE_NAME = re.compile(rf"(?:[Пп]олучател(?:ь|я|ю|ем)?)(?=\s+[{CYR_UPPER}A-Z])")
+# Label must end immediately before the name span (optional :/dash + spaces only).
+_RECIPIENT_IMMEDIATE = re.compile(
+    rf"(?<![A-Za-z{CYR}])получател(?:ь|я|ю|ем)?\s*[:\-—]?\s*\Z",
+    re.IGNORECASE,
+)
 _RECIPIENT_BARE = re.compile(
     r"получател(?:ь|я|ю|ем)?(?!\s+(?:премии|награды|ордена|гранта)\b)",
     re.IGNORECASE,
@@ -154,9 +157,8 @@ def _recipient_distance(text: str, start: int, end: int) -> int | None:
     strong = label_distance(text, start, end, _RECIPIENT_STRONG)
     if strong is not None:
         return strong
-    before_name = label_distance(text, start, end, _RECIPIENT_BEFORE_NAME)
-    if before_name is not None:
-        return before_name
+    if _recipient_immediately_before(text, start):
+        return 0
     bare = label_distance(text, start, end, _RECIPIENT_BARE)
     if bare is None:
         return None
@@ -164,6 +166,12 @@ def _recipient_distance(text: str, start: int, end: int) -> int | None:
     if _DELIVERY.search(text, sent_start, sent_end) is not None:
         return bare
     return None
+
+
+def _recipient_immediately_before(text: str, name_start: int) -> bool:
+    """True when Получатель[:]? spaces ends exactly at the name span start."""
+    prefix = text[max(0, name_start - 24) : name_start]
+    return _RECIPIENT_IMMEDIATE.search(prefix) is not None
 
 
 def _sentence_bounds(text: str, index: int) -> tuple[int, int]:

@@ -401,6 +401,15 @@ def test_free_text_multiword_city_and_street() -> None:
         (PiiType.ADDRESS_BUILDING, "1"),
         (PiiType.ADDRESS_UNIT, "2"),
     ]
+    # No commas between labeled multi-word city and street.
+    assert _found(
+        "адрес проживания: город Нижний Новгород улица Большая Никитская дом 3 квартира 4."
+    ) == [
+        (PiiType.ADDRESS_CITY, "город Нижний Новгород"),
+        (PiiType.ADDRESS_STREET, "улица Большая Никитская"),
+        (PiiType.ADDRESS_BUILDING, "3"),
+        (PiiType.ADDRESS_UNIT, "4"),
+    ]
 
 
 def test_free_text_address_stops_at_sentence_boundary() -> None:
@@ -442,6 +451,7 @@ def test_free_text_recipient_award_is_not_person_context() -> None:
         )
         == []
     )
+    assert _found("Получатель Нобелевской премии Александр Пушкин выступил на сцене.") == []
     assert _full_found("Сегодня обсуждали роман Александра Пушкина.") == []
 
 
