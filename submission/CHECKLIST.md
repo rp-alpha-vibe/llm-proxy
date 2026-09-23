@@ -8,7 +8,7 @@
 | Элемент | Статус | Значение / действие |
 | --- | --- | --- |
 | Source ZIP | готово локально | `python scripts/package.py` → `dist/llm-proxy-src.zip` |
-| Презентация | подготовлена | [PDF](final/llm-proxy-final.pdf) для загрузки на форму; [PowerPoint](final/llm-proxy-final.pptx) для правок; единый [исходник](build_presentation.mjs) |
+| Презентация | подготовлена | [PDF](final/llm-proxy-final.pdf) для загрузки на форму; [PowerPoint](final/llm-proxy-final.pptx) для правок; 15 слайдов по ТЗ; [исходник PPTX](build_presentation.mjs) и [экспорт PDF](export_presentation_pdf.py) |
 | Ссылка на VCS | доступна публично при последней проверке | https://github.com/rp-alpha-vibe/llm-proxy |
 | Публичный URL сервиса | **Railway, работает сейчас** | https://llm-proxy-production-84c7.up.railway.app |
 | Нагрузка Railway | probe 100 RPS **pass**; полный 1000/300 с **block** | [отчёт](railway-load-probe-2026-09-23.md); ~33% ошибок, 76k×429, p95≈10 с |

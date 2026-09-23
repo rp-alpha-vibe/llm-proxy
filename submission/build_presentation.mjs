@@ -1,286 +1,250 @@
-// Источник финальной презентации. Сборка: запустить из каталога с
-// доступным @oai/artifact-tool, указав SKILL_DIR, TMP_DIR, FINAL_PPTX.
-// Все примеры персональных данных в слайдах вымышлены.
+// Финальная презентация: задача, решение, проверяемые результаты.
+// SKILL_DIR, TMP_DIR, FINAL_PPTX, RUNTIME_PYTHON, RUNTIME_NODE_MODULES:
+// абсолютные пути. TMP_DIR и FINAL_PPTX должны находиться внутри workspaceDir.
+// Все примеры ПД синтетические. Данные измерений приведены с границами применимости.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {Presentation, PresentationFile} from '@oai/artifact-tool';
-
-const {SKILL_DIR, TMP_DIR, FINAL_PPTX, RUNTIME_PYTHON} = process.env;
-for (const [key, value] of Object.entries({SKILL_DIR, TMP_DIR, FINAL_PPTX, RUNTIME_PYTHON})) {
+const {SKILL_DIR, TMP_DIR, FINAL_PPTX, RUNTIME_PYTHON, RUNTIME_NODE_MODULES} = process.env;
+for (const [key,value] of Object.entries({SKILL_DIR,TMP_DIR,FINAL_PPTX,RUNTIME_PYTHON,RUNTIME_NODE_MODULES})) {
   if (!path.isAbsolute(value ?? '')) throw new Error(`${key} must be an absolute path`);
 }
-const {finalizePresentation} = await import(pathToFileURL(path.join(SKILL_DIR, 'container_tools/artifact_tool_utils.mjs')).href);
-const P = Presentation.create({slideSize:{width:1280,height:720}});
-const C = {dark:'#16232D', red:'#D52D29', paper:'#F7F5EF', pale:'#E6E1D7', gray:'#4F5C63', white:'#FFFFFF', muted:'#A8B3B6'};
-const FONT = 'DejaVu Sans';
-const REF = 'https://github.com/rp-alpha-vibe/llm-proxy/blob/main/';
-let slideNo = 0;
-
-function t(s, text, x, y, w, h, size=24, color=C.dark, opts={}) {
-  const sh=s.shapes.add({geometry:'textbox',name:opts.name??`text-${s.shapes.items?.length??Math.random()}`,
-    position:{left:x,top:y,width:w,height:h},fill:'none',line:{fill:'none',width:0}});
-  sh.text=text;
-  sh.text.style={typeface:FONT,fontSize:size,bold:!!opts.bold,color,alignment:opts.align??'left',
-    verticalAlignment:'middle',autoFit:'none',wrap:'square',insets:{left:0,right:0,top:0,bottom:0}};
-  return sh;
+const {importRuntimeModule} = await import(pathToFileURL(path.join(SKILL_DIR,'container_tools/runtime_helpers.mjs')).href);
+const {Presentation,PresentationFile,FileBlob} = await importRuntimeModule('@oai/artifact-tool');
+const {finalizePresentation} = await import(pathToFileURL(path.join(SKILL_DIR,'container_tools/artifact_tool_utils.mjs')).href);
+const P=Presentation.create({slideSize:{width:1280,height:720}});
+const C={ink:'#16232D',red:'#C92829',paper:'#F7F5EF',white:'#FFFFFF',gray:'#505C64',line:'#B4B9B9',tint:'#EBE7DE'};
+const FONT='DejaVu Sans';
+const REF='https://github.com/rp-alpha-vibe/llm-proxy/blob/main/';
+const evidenceDate='23 сентября 2026';
+let serial=0;
+const slideTexts=[];
+function text(s,value,x,y,w,h,size=25,color=C.ink,bold=false,align='left',vertical='middle'){
+ const q=s.shapes.add({geometry:'textbox',name:`text-${++serial}`,position:{left:x,top:y,width:w,height:h},fill:'none',line:{fill:'none',width:0}});
+ q.text=value;q.text.style={typeface:FONT,fontSize:size,color,bold,alignment:align,verticalAlignment:vertical,autoFit:'none',wrap:'square',insets:{left:0,right:0,top:0,bottom:0}};
+ slideTexts.at(-1).push(value); return q;
 }
-function link(s, text, url, x, y, w, h, size=24) {
-  const shape=t(s,text,x,y,w,h,size,C.dark);
-  shape.text=[[{run:text,link:{uri:url,isExternal:true}}]];
-  return shape;
+function slide(title,refs=[],dark=false){
+ const s=P.slides.add();slideTexts.push([]);s.background.fill=dark?C.ink:C.paper;
+ text(s,'КРАСНЫЙ KOD',64,32,420,28,16,dark?'#BBC3C8':C.red,true);
+ text(s,String(P.slides.items.length).padStart(2,'0'),1150,32,65,28,16,dark?'#BBC3C8':C.gray,false,'right');
+ text(s,title,64,97,1152,108,40,dark?C.white:C.ink,true);
+ s.speakerNotes.textFrame.setText(`Источники: ТЗ «Модуль безопасности персональных данных», ds.pdf, предоставлен владельцем.\n${refs.map(r=>r.startsWith('https://')?r:REF+r).join('\n')}\nДата подготовки: ${evidenceDate}. Локальные результаты не являются оценкой AlfaSonar.`);
+ return s;
 }
-function base(title, lead='', refs=[], dark=false) {
-  const s=P.slides.add(); slideNo++;
-  s.background.fill=dark?C.dark:C.paper;
-  const ink=dark?C.white:C.dark;
-  t(s,'КРАСНЫЙ KOD',64,36,365,32,16,dark?C.muted:C.red,{bold:true});
-  t(s,String(slideNo).padStart(2,'0'),1154,34,58,34,17,dark?C.muted:C.gray,{align:'right'});
-  t(s,title,64,99,1144,102,37,ink,{bold:true});
-  if(lead)t(s,lead,65,202,1135,67,19,dark?C.muted:C.gray);
-  if(refs.length)s.speakerNotes.textFrame.setText('Источники и условия утверждений:\n'+refs.map(r=>r.startsWith('https://')?r:REF+r).join('\n'));
-  return s;
+function note(s,v,dark=false){text(s,v,64,648,1152,48,18,dark?'#BBC3C8':C.gray);}
+function label(s,v,x,y,w=520){return text(s,v,x,y,w,38,23,C.red,true);}
+function box(s,v,x,y,w,h,{size=23,fill=C.white,color=C.ink,bold=false,border=C.line}={}){
+ const q=s.shapes.add({geometry:'rect',name:`diagram-${++serial}`,position:{left:x,top:y,width:w,height:h},fill,line:{fill:border,width:1.5}});
+ q.text=v;q.text.style={typeface:FONT,fontSize:size,color,bold,alignment:'center',verticalAlignment:'middle',autoFit:'none',wrap:'square',insets:{left:14,right:14,top:10,bottom:10}};
+ slideTexts.at(-1).push(v);return q;
 }
-function foot(s,txt,dark=false){t(s,txt,64,658,1150,36,15,dark?C.muted:C.gray)}
-function label(s,txt,x,y,w=350){t(s,txt,x,y,w,29,16,C.red,{bold:true})}
-function para(s,txt,x,y,w,h=110,size=22,color=C.dark){t(s,txt,x,y,w,h,size,color)}
-function item(s,n,title,description,x,y,w=535){
-  t(s,String(n).padStart(2,'0'),x,y,65,47,25,C.red,{bold:true});
-  t(s,title,x+70,y,w-70,45,23,C.dark,{bold:true});
-  t(s,description,x+70,y+51,w-72,80,18,C.gray);
+function connect(s,a,b,from='right',to='left',color=C.red){
+ return s.shapes.connect(a,b,{kind:'elbow',fromSide:from,toSide:to,line:{fill:color,width:2},tail:{type:'triangle',width:'sm',length:'sm'}});
 }
-function table(s,headers,rows,x,y,width,rowH,colWidths){
-  const values=[headers,...rows];
-  const tab=s.tables.add({rows:values.length,columns:headers.length,left:x,top:y,width,height:rowH*values.length,values,columnWidths:colWidths});
-  for(let i=0;i<values.length;i++){
-    tab.rows[i].height=rowH;
-    for(let j=0;j<headers.length;j++){
-      const cell=tab.getCell(i,j);
-      cell.fill=i===0?C.dark:(i%2?C.white:C.paper);
-      cell.text.style={typeface:FONT,fontSize:i===0?16:17,bold:i===0,color:i===0?C.white:C.dark,
-        wrap:'square',verticalAlignment:'middle',insets:{left:12,right:8,top:5,bottom:5}};
-    }
-  }
-  return tab;
+function rule(s,x,y,w){s.shapes.add({geometry:'line',position:{left:x,top:y,width:w,height:0},fill:'none',line:{fill:C.line,width:1}});}
+function table(s,headers,rows,y,widths,rowH=69){
+ const vals=[headers,...rows];const t=s.tables.add({rows:vals.length,columns:headers.length,left:64,top:y,width:1152,height:rowH*vals.length,values:vals,columnWidths:widths});
+ vals.forEach((r,i)=>{t.rows[i].height=rowH;r.forEach((v,j)=>{const c=t.getCell(i,j);c.fill=i===0?C.ink:i%2?C.white:C.paper;c.text.style={typeface:FONT,fontSize:i===0?20:21,color:i===0?C.white:C.ink,bold:i===0,wrap:'square',verticalAlignment:'middle',insets:{left:14,right:12,top:8,bottom:8}};slideTexts.at(-1).push(v);});});return t;
 }
-
-// 01. Короткое определение продукта.
+function link(s,v,url,x,y,w,size=22){const q=text(s,v,x,y,w,46,size,C.ink);q.text=[[{run:v,link:{uri:url,isExternal:true}}]];}
+// 1. Назначение сервиса.
 {
- const s=base('Защита персональных данных\nпри работе с языковой моделью','',['docs/REQUIREMENTS.md'],true);
- t(s,'Наш сервис скрывает сведения о человеке до отправки запроса\nи восстанавливает их в полученном ответе.',66,278,1080,160,30,C.white);
- t(s,'llm-proxy',66,547,420,53,26,C.red,{bold:true});
- foot(s,'Команда Красный Kod  ·  Хакатон АльфаВайб  ·  23 сентября 2026',true);
+ const s=slide('Сервис для защиты персональных\nданных при работе с LLM',['docs/REQUIREMENTS.md'],true);
+ text(s,'Сервис предназначен для обнаружения и маскирования\nперсональных данных в запросах к LLM и их восстановления\nв ответах модели.',66,275,1120,175,29,C.white);
+ text(s,'llm-proxy',66,529,600,60,35,C.red,true);
+ note(s,'Команда Красный Kod. Хакатон АльфаВайб. 23 сентября 2026',true);
 }
-// 02. Пять ключевых пунктов из ТЗ и наблюдаемое состояние.
+// 2. Исходная проблема и обязательные ограничения, без нумерованного чек-листа.
 {
- const s=base('Задача и пять условий успеха','Для каждого требования показываем реализацию и способ проверки.',['docs/REQUIREMENTS.md','README.md']);
- const lines=[
-  ['01','Встраивание','Один POST /process без обращения сервиса к модели'],
-  ['02','Все категории','Правила для 22 позиций ТЗ; качество свободного текста дорабатывается'],
-  ['03','Защита данных','Шифрование временной записи и журналы без исходных значений'],
-  ['04','Качество','Тесты и точное восстановление; официальный порог 95% не подтверждён'],
-  ['05','Нагрузка','1000 операций/с локально; публичный сервер этот режим не выдержал']
- ];
- lines.forEach((a,i)=>{const y=284+i*68;t(s,a[0],66,y,57,39,23,C.red,{bold:true});t(s,a[1],133,y,234,39,23,C.dark,{bold:true});t(s,a[2],369,y,830,53,19,C.gray)});
+ const s=slide('Исходная задача',['docs/REQUIREMENTS.md']);
+ text(s,'Команды банка защищают ПД в запросах к LLM разными способами.\nТакие решения трудно переиспользовать и настраивать,\nа восстановление данных реализовано не везде.',64,227,1148,135,28);
+ label(s,'Требуемое решение',64,390);
+ text(s,'Общий сервис маскирования ПД с обратимыми заменами,\nправилами для разных систем и возможностью добавлять новые типы.',64,437,1145,90,27);
+ rule(s,64,566,1152);
+ text(s,'Ориентиры ТЗ: качество 95%, 1000 запросов/с, ответ до 1 с,\nтексты до 100 000 токенов.',64,588,1152,65,24,C.gray);
 }
-// 03. Граница ответственности: клиент самостоятельно общается с моделью.
+// 3. Схема обмена. LLM вызывается приложением.
 {
- const s=base('Место сервиса в цепочке запросов','Приложение управляет обращением к модели. Наш сервис обрабатывает текст до и после него.',['docs/MASKING.md']);
- const x=[70,365,674,971];
- [['ПРИЛОЖЕНИЕ','Исходный запрос'],['НАШ СЕРВИС','Поиск и замена'],['ПРИЛОЖЕНИЕ','Очищенный текст'],['ЯЗЫКОВАЯ МОДЕЛЬ','Ответ']].forEach((a,i)=>{
-  label(s,a[0],x[i],317,260);para(s,a[1],x[i],363,246,90,23);
-  if(i<3)t(s,'→',x[i]+263,344,40,50,38,C.red);
- });
- t(s,'Возвращаемся тем же путём',71,514,425,42,25,C.dark,{bold:true});
- para(s,'Приложение передаёт ответ модели нашему сервису с прежним идентификатором.\nСервис восстанавливает известные обозначения.',71,567,1090,80,21);
+ const s=slide('Взаимодействие с LLM',['docs/MASKING.md','src/llm_proxy/application/process_service.py']);
+ const a=box(s,'Система-потребитель',70,234,420,70,{bold:true});
+ const b=box(s,'Сервис маскирования ПД',700,234,510,70,{bold:true});
+ const c=box(s,'Система-потребитель',70,393,420,70,{bold:true});
+ const d=box(s,'LLM',700,393,510,70,{bold:true});
+ const e=box(s,'Система-потребитель',70,552,420,70,{bold:true});
+ const f=box(s,'Сервис маскирования ПД',700,552,510,70,{bold:true});
+ connect(s,a,b);connect(s,c,d);connect(s,e,f);
+ label(s,'Запрос с ПД',70,190,520);label(s,'Маскированный запрос',70,349,610);label(s,'Ответ LLM с масками',70,508,610);
+ text(s,'Возвращает текст с масками',715,309,490,35,22,C.gray);
+ text(s,'Возвращает ответ с масками',715,468,490,35,22,C.gray);
+ text(s,'Возвращает ответ с исходными ПД',715,627,490,35,22,C.gray);
 }
-// 04. Архитектура — схема из редактируемых текстовых объектов.
+// 4. Настоящая компонентная схема, редактируемые узлы и связи.
 {
- const s=base('Архитектура: приложение и временная память','Одна служба обрабатывает оба направления. Общая временная запись доступна её рабочим процессам.',['docs/ARCHITECTURE.md','docs/DECISIONS.md']);
- const xs=[66,287,537,798,1033], names=['Приложение','HTTP-вход','Правила системы','Поиск и замена','Временная запись'];
- const texts=['Отправляет текст\nи получает ответ','POST /process\nпроверяет формат','Какие категории\nдопустимы','Обнаружение, маска,\nвосстановление','Redis: шифрование\nи срок хранения'];
- names.forEach((name,i)=>{
-  label(s,name,xs[i],314,i===4?205:230);
-  para(s,texts[i],xs[i],356,i===4?207:213,105,18);
-  if(i<4)t(s,'→',xs[i]+205,345,40,56,31,C.red);
- });
- label(s,'Журнал и метрики',66,524,280);
- para(s,'Результат, типы и число найденных данных, длительность этапов. Исходные значения не записываются.',66,563,1080,73,20);
- foot(s,'Redis доступен приложению по внутренней сети; языковую модель вызывает приложение.');
+ const s=slide('Архитектура сервиса',['docs/ARCHITECTURE.md','src/llm_proxy/main.py']);
+ const api=box(s,'HTTP API\nFastAPI',64,297,200,122,{bold:true});
+ const flow=box(s,'ProcessService\nсессия и режим обработки',363,297,288,122,{fill:C.ink,color:C.white,bold:true});
+ const engine=box(s,'PII Engine\nпоиск и границы ПД',750,254,440,98);
+ const masks=box(s,'Маскирование\nи восстановление',750,413,440,98);
+ const policy=box(s,'Политики систем\nкатегории и разрешения',363,207,288,66,{size:20});
+ const store=box(s,'Redis\nAES-GCM, TTL',363,524,288,95,{bold:true});
+ connect(s,api,flow);connect(s,flow,engine);connect(s,flow,masks);connect(s,policy,flow,'bottom','top',C.gray);connect(s,flow,store,'bottom','top');
+ text(s,'POST /process',65,245,220,36,22,C.gray);
+ text(s,'Общая память для\nрабочих процессов',65,543,250,64,21,C.gray);
+ text(s,'Локальная обработка текста\nбез внешних NLP-вызовов',750,556,445,64,22,C.gray);
+ note(s,'Один сервис приложения и приватный Redis. Docker обеспечивает воспроизводимый запуск.');
 }
-// 05. Обоснование стека.
+// 5. Инженерные причины выбора.
 {
- const s=base('Почему этот стек','Для задачи нужны быстрый локальный поиск, короткое хранение соответствий и простой HTTP-интерфейс.',['docs/ARCHITECTURE.md','docs/DECISIONS.md']);
- const rows=[['Python + FastAPI','Правила работы с текстом и проверяемый HTTP-контракт'],
- ['Несколько процессов Uvicorn','Обработка запросов одновременно; число процессов зависит от ресурсов'],
- ['Redis + AES-GCM','Общая временная память, шифрование с проверкой целостности'],
- ['Docker + Prometheus + k6','Повторяемое развёртывание, рабочие показатели и нагрузочные проверки']];
- rows.forEach((a,i)=>{let y=304+i*74;t(s,a[0],67,y,354,51,22,C.dark,{bold:true});para(s,a[1],425,y,758,63,19,C.gray)});
- foot(s,'Поиск не вызывает сторонний сервис. База постоянного хранения и очередь сообщений задачу не упрощают.');
-}
-// 06. Полный перечень, без обещания качества на неизвестных данных.
-{
- const s=base('Какие данные ищем','Правила предусмотрены для всех 22 обязательных позиций ТЗ. Надёжность вне размеченных анкет требует проверки.',['docs/REQUIREMENTS.md','docs/ARCHITECTURE.md','docs/TASK_IMPROVE_PII_DETECTION.md']);
- const groups=[
-  ['О человеке','ФИО\nДата рождения\nМесто рождения\nГражданство'],
-  ['Документы','Паспорт\nКем выдан\nКод подразделения\nДата выдачи\nВодительские права\nИНН'],
-  ['Адрес и связь','Страна · индекс · город\nУлица · дом · квартира\nТелефон\nЭлектронная почта'],
-  ['Банковские данные','Номер карты\nЗащитный код CVV\nПИН-код\nИмя держателя']
- ];
- groups.forEach((g,i)=>{const x=66+i*302;label(s,g[0],x,311,274);para(s,g[1],x,355,270,258,20)});
- foot(s,'Наличие правила не означает 100% обнаружения в произвольном тексте; подробный список дан в приложении.');
-}
-// 07. Детектирование.
-{
- const s=base('Как находим сведения о человеке','Сначала получаем кандидатов, затем проверяем их смысл и выбираем точные границы замены.',['docs/MASKING.md','docs/REQUIREMENTS.md']);
- item(s,1,'Форма записи','Телефон, почта, паспорт, карта и ИНН ищутся по виду и контрольным признакам.',65,294,547);
- item(s,2,'Окружающие слова','ФИО, даты, адрес и защитные коды требуют подтверждающего контекста.',663,294,541);
- item(s,3,'Пересечения','Из нескольких находок на одном месте оставляем подходящую по приоритету.',65,457,547);
- item(s,4,'Границы','Замене подлежит найденное значение; соседний текст сохраняется.',663,457,541);
- foot(s,'«Дата рождения: 10.01.1990» требует защиты; обычную дату встречи правило не должно принимать за неё.');
-}
-// 08. Маскирование.
-{
- const s=base('Как создаётся маска','Пример с вымышленными данными. Одно и то же значение получает одну маску внутри запроса.',['docs/MASKING.md']);
- label(s,'Исходный текст',67,288);para(s,'Напишите на ivan@example.com. Позвоните +7 916 123-45-67.\nПовторите письмо на ivan@example.com.',67,328,1114,116,24);
- label(s,'После обработки',67,477);para(s,'Напишите на <EMAIL_1>. Позвоните <PHONE_2>.\nПовторите письмо на <EMAIL_1>.',67,517,1114,91,25,C.dark);
- foot(s,'Соответствие шифруется и хранится временно; замены в тексте применяются справа налево.');
-}
-// 09. Два сценария восстановления.
-{
- const s=base('Два способа восстановить данные','Оба работают через POST /process с тем же идентификатором запроса.',['docs/MASKING.md','docs/REQUIREMENTS.md']);
- label(s,'А. Ранее выданная маска',66,300,530);para(s,'Передали замаскированную строку без изменений. Сервис вернёт исходный запрос посимвольно.',66,349,534,116,23);
- label(s,'Б. Новый ответ модели',663,300,530);para(s,'«Письмо отправьте на <EMAIL_1>» превращается в «Письмо отправьте на ivan@example.com».',663,349,518,155,23);
- para(s,'Неизвестные или изменённые моделью обозначения остаются в тексте. Соответствия из другого запроса или другой системы не используются.',66,559,1102,74,19,C.gray);
-}
-// 10. Контракт и политики.
-{
- const s=base('Подключение и настройки систем','Запрос содержит ровно два поля. Ответ содержит только обработанный текст.',['docs/REQUIREMENTS.md','config/systems.example.yaml','README.md']);
- label(s,'HTTP-интерфейс',67,285,500);
- para(s,'POST /process\n{ "payload": "...", "payload_id": "..." }\n{ "result": "..." }',67,330,570,145,23);
- label(s,'Настройки для приложения',675,285,516);
- para(s,'Включено ли подключение\nКакие категории данных защищать\nРазрешено ли восстановление\nКак выглядит обозначение',675,330,514,200,21);
- foot(s,'Сейчас активную систему выбирают при развёртывании. Публичный вызов не удостоверяет отправителя.');
-}
-// 11. Защита и срок хранения.
-{
- const s=base('Что защищает временную запись','Без соответствий между масками и значениями восстановление было бы невозможно.',['docs/ARCHITECTURE.md','docs/MASKING.md','docs/DEPLOYMENT_RAILWAY.md']);
- t(s,'15 минут',68,293,410,80,44,C.red,{bold:true});para(s,'Срок хранения после маскирования',68,366,470,68,21);
- t(s,'2 минуты',681,293,460,80,44,C.red,{bold:true});para(s,'Срок после успешного восстановления',681,366,503,68,21);
- para(s,'Запись зашифрована AES-GCM. Ключ задаётся отдельно от кода. Redis не опубликован в интернете. В журнал не попадают исходный текст и значения найденных данных.',68,506,1080,112,21);
- foot(s,'Сроки задаются конфигурацией. Полное соответствие внутренним правилам ИБ банка отдельно не подтверждалось.');
-}
-// 12. Наблюдаемость.
-{
- const s=base('Журналы и рабочие показатели','По запросу сохраняются безопасные признаки обработки; /metrics отдаёт агрегированные счётчики и задержки.',['docs/ARCHITECTURE.md','src/llm_proxy/observability/metrics.py','src/llm_proxy/observability/logging.py']);
- label(s,'Одна запись в журнале',66,294,500);
- para(s,'Операция: маскирование\nКод ответа: 200\nНайденные типы: email, phone\nЧисло находок: 3\nПоиск: 6,1 мс · Redis: 1,2 мс',66,338,508,210,20);
- label(s,'Что можно измерить',658,294,530);
- para(s,'Запросы в секунду и время ответа\nОтказы, перегрузка и занятые процессы\nЧисло находок по категориям\nСкорость обработки текста и время Redis',658,338,520,210,20);
- foot(s,'Текстовые единицы считаются по пробелам: это не токены конкретной языковой модели.');
-}
-// 13. Оценка качества — честные границы.
-{
- const s=base('Что показывают проверки качества','Внутренние тесты и официальная проверка используют разные данные и не заменяют друг друга.',['README.md','docs/REQUIREMENTS.md','docs/TASK_IMPROVE_PII_DETECTION.md','scripts/eval_labeled_sample.py','tests/test_questionnaire_detection.py','https://github.com/rp-alpha-vibe/llm-proxy/commit/73153457f2b6aba31b61d933b45636d56ee961ee']);
- t(s,'4 400 / 4 400',68,290,600,103,45,C.red,{bold:true});para(s,'заявленное покрытие размеченных полей\nв 200 синтетических анкетах',68,380,560,85,20);
- t(s,'F1 = 1,0',703,290,472,103,46,C.red,{bold:true});para(s,'старый локальный набор из 46 примеров',703,379,460,63,20);
- para(s,'Проверяем типы и границы, лишние срабатывания, маску и восстановление. Поиск данных в свободных формулировках исправляется и проходит отдельную регрессию; результат по анкетам не доказывает его качество.',68,487,1110,117,21);
- foot(s,'Порог 95% на неизвестных данных организаторов пока не подтверждён.');
-}
-// 14. Reliability.
-{
- const s=base('Поведение при ошибках и большой нагрузке','Сервис не отдаёт исходные данные как запасной путь при сбое временной памяти.',['docs/MASKING.md','docs/ARCHITECTURE.md','docs/REQUIREMENTS.md']);
- item(s,1,'Некорректный запрос','HTTP 422 без вывода исходного текста в журнал.',66,292,556);
- item(s,2,'Перегрузка','HTTP 429 с указанием времени до повтора.',664,292,540);
- item(s,3,'Проблема Redis','Контролируемая ошибка 503; обработка закрывается.',66,468,556);
- item(s,4,'Повтор запроса','Прежняя маска возвращается по тому же идентификатору.',664,468,540);
- foot(s,'Ограничение 8 млн символов; 100 тыс. условных токенов тестировались локально отдельно.');
-}
-// 15. Evidence performance.
-{
- const s=base('Скорость зависит от среды запуска','Пятиминутный профиль 1000 операций в секунду: полный локальный прогон прошёл, публичный нет.',['docs/ARCHITECTURE.md','submission/railway-load-probe-2026-09-23.md']);
- table(s,['Показатель','Локальный компьютер','Railway'],[
-  ['Успешно за 300 с','300 001','193 444'],
-  ['Успешно в секунду','≈1000','≈645'],
-  ['Время ответа p95','21,78 мс','≈10 с'],
-  ['Ошибки','0','≈33%']
- ],66,284,1146,58,[423,353,370]);
- foot(s,'Короткий прогон Railway: 100 операций/с, 30 с, без ошибок. Локально: 8 процессов; в Railway ресурс ограничен.');
-}
-// 16. Additional work.
-{
- const s=base('Дополнительные возможности: фактическое состояние','Бонусные пункты показываем отдельно от обязательных требований.',['docs/REQUIREMENTS.md','docs/ARCHITECTURE.md','config/systems.example.yaml']);
+ const s=slide('Обоснование выбора стека',['docs/DECISIONS.md','docs/ARCHITECTURE.md']);
  const rows=[
-  ['Два формата обозначений для систем','Реализовано'],
-  ['Новые типы через дополнительные правила','Предусмотрено в устройстве'],
-  ['Отдельная токенизация / синтетические значения','Не реализованы'],
-  ['2000 операций/с до 1 секунды','Не подтверждено'],
-  ['Новые виды удостоверений и составные правила','Не подтверждены']
- ];
- rows.forEach((r,i)=>{let y=294+i*68;para(s,r[0],68,y,800,55,21);t(s,r[1],888,y,294,55,19,i<2?C.dark:C.red,{bold:true})});
+ ['Python + FastAPI','Обработка текста, строгая схема запроса и простой HTTP API.'],
+ ['Локальные правила поиска','Контроль границ и контекста без передачи ПД внешним моделям.'],
+ ['Redis + AES-GCM','Общее состояние для процессов, атомарное создание сессий и TTL.'],
+ ['Uvicorn + Docker','Несколько рабочих процессов и воспроизводимое развёртывание.'],
+ ['Prometheus + k6','Наблюдение за сервисом и измерение поведения под нагрузкой.']];
+ rows.forEach((r,i)=>{const y=223+i*80;text(s,r[0],64,y,348,61,25,C.ink,true);text(s,r[1],454,y,748,61,24,C.gray);if(i<4)rule(s,64,y+72,1152);});
 }
-// 17. Requirement traceability.
+// 6. Категории сгруппированы по смыслу, без спорного подсчёта «22 категории ТЗ».
 {
- const s=base('Сводка по требованиям','Состояние отражает проверки команды на момент подготовки материалов.',['docs/REQUIREMENTS.md','README.md','submission/railway-load-probe-2026-09-23.md']);
- table(s,['Требование','Что сделано','Что подтверждено'],[
-  ['Интерфейс и восстановление','POST /process, два сценария','Локальные и сквозные проверки'],
-  ['22 категории данных','Правила предусмотрены','Качество на неизвестных данных открыто'],
-  ['Разные системы и доступ','Политики из конфигурации','Публичная авторизация отсутствует'],
-  ['Журналы и защита','Метрики, шифрование, срок','Локальные тесты и проверка среды'],
-  ['95% качества','Внутренний набор пройден','Официальный прогон открыт'],
-  ['1000 операций/с','Достигнуто локально','Railway не прошёл']
- ],66,275,1147,53,[270,402,475]);
+ const s=slide('Данные, которые маскирует сервис',['docs/REQUIREMENTS.md','src/llm_proxy/detection/models.py']);
+ const cols=[
+ ['О человеке','ФИО\nДата рождения\nМесто рождения\nГражданство'],
+ ['Документы','Серия и номер паспорта\nОрган выдачи\nКод подразделения\nДата выдачи\nВодительское удостоверение\nИНН'],
+ ['Адрес и связь','Адрес и его части:\nстрана, индекс, город,\nулица, дом, квартира\nТелефон\nEmail'],
+ ['Банковские данные','Номер карты\nCVV\nПИН-код\nИмя держателя карты']];
+ cols.forEach((g,i)=>{const x=64+i*292;label(s,g[0],x,243,276);text(s,g[1],x,310,274,270,22,C.ink,false,'left','top');});
+ note(s,'Набор правил охватывает типы из ТЗ. Качество проверяется отдельно на размеченных примерах.');
 }
-// 18. Demo and conclusion.
+// 7. Поиск с учётом контекста и расширяемости.
 {
- const s=base('Демонстрация и материалы','Запрос с вымышленными данными доступен через публичный адрес.',['README.md','submission/CHECKLIST.md']);
- label(s,'Публичный адрес',66,290,470);
- link(s,'https://llm-proxy-production-84c7.up.railway.app',
-   'https://llm-proxy-production-84c7.up.railway.app',66,331,1110,73,25);
- label(s,'Исходный код',66,436,470);
- link(s,'https://github.com/rp-alpha-vibe/llm-proxy',
-   'https://github.com/rp-alpha-vibe/llm-proxy',66,477,1050,66,25);
- para(s,'Открытые проверки: официальный результат качества и допуск тестера. Нагрузочный профиль на публичном сервере пока не пройден.',66,567,1100,76,20,C.gray);
- foot(s,'Публичная демонстрация предназначена только для вымышленных данных.');
+ const s=slide('Методика поиска ПД',['src/llm_proxy/detection/engine.py','docs/REQUIREMENTS.md']);
+ const nodes=[
+ box(s,'Нормализация\nтекста',64,251,228,97),
+ box(s,'Поиск\nкандидатов',365,251,228,97),
+ box(s,'Проверка\nконтекста',668,251,228,97),
+ box(s,'Выбор типа\nи границ',971,251,244,97)];
+ nodes.slice(0,3).forEach((a,i)=>connect(s,a,nodes[i+1]));
+ text(s,'Сохраняем связь\nс позициями\nисходной строки.',64,379,244,130,23,C.gray);
+ text(s,'Шаблоны, метки\nполей, форматы\nи контрольные суммы.',365,379,257,130,23,C.gray);
+ text(s,'Отличаем ПД\nот обычной даты\nили адреса банка.',668,379,248,130,23,C.gray);
+ text(s,'Разрешаем\nпересечения.\nСохраняем остальной текст.',971,379,245,145,23,C.gray);
+ note(s,'Новые правила подключаются через реестр детекторов. HTTP-контракт и работа сессий сохраняются.');
 }
-// 19. Appendix complete checklist.
+// 8. Вместо классификации способов демаскирования — два понятных примера.
 {
- const s=base('Приложение: все 22 категории','Каждая строка адреса из задания учитывается отдельно.',['docs/REQUIREMENTS.md']);
- const colA=['1 ФИО','2 Дата рождения','3 Место рождения','4 Гражданство','5 Паспорт','6 Орган выдачи','7 Код подразделения','8 Дата выдачи'];
- const colB=['9 Водительское удостоверение','10 ИНН','11 Страна','12 Индекс','13 Город','14 Улица','15 Дом','16 Квартира'];
- const colC=['17 Телефон','18 Электронная почта','19 Номер карты','20 CVV','21 ПИН-код','22 Имя держателя карты'];
- [colA,colB,colC].forEach((arr,i)=>para(s,arr.join('\n'),66+i*399,295,380,320,21));
- foot(s,'Правила предусмотрены для всех позиций; общая доля корректного обнаружения требует отдельной проверки.');
+ const s=slide('Маскирование и восстановление',['docs/MASKING.md','tests/test_product_demask.py']);
+ label(s,'Входные данные',64,225,490);label(s,'Выходные данные',715,225,490);
+ text(s,'Маскирование запроса',64,292,1152,40,25,C.ink,true);
+ const a=box(s,'Напишите на demo@example.com.',64,353,505,82,{size:24});
+ const b=box(s,'Напишите на <EMAIL_1>.',715,353,501,82,{size:24});connect(s,a,b);
+ text(s,'Восстановление ответа модели',64,472,1152,40,25,C.ink,true);
+ const c=box(s,'Ответ отправлен на <EMAIL_1>.',64,534,505,82,{size:24});
+ const d=box(s,'Ответ отправлен на demo@example.com.',715,534,501,82,{size:23});connect(s,c,d);
+ note(s,'Один payload_id связывает запрос и ответ. Текст ответа сохраняется. Пример синтетический.');
 }
-// 20. Appendix configuration and caveat.
+// 9. Контракт и настройка потребителей.
 {
- const s=base('Приложение: настройка нового приложения','Добавление типового потребителя не требует менять алгоритм поиска.',['README.md','config/systems.example.yaml','docs/ARCHITECTURE.md']);
- para(s,'1. Добавить систему в config/systems.example.yaml.\n2. Указать enabled и список защищаемых категорий.\n3. Разрешить либо запретить восстановление.\n4. Выбрать формат обозначений.\n5. Установить идентификатор активной системы при запуске.',66,296,1110,277,23);
- foot(s,'Отдельную проверку личности вызывающего приложения текущий публичный интерфейс не выполняет.');
+ const s=slide('HTTP-контракт и политики систем',['docs/REQUIREMENTS.md','config/systems.example.yaml']);
+ label(s,'POST /process',64,225,520);
+ text(s,'Запрос',64,290,450,35,22,C.gray);
+ text(s,'{\n  "payload": "строка для обработки",\n  "payload_id": "идентификатор"\n}',64,331,610,155,25);
+ text(s,'Ответ 200',64,517,520,35,22,C.gray);
+ text(s,'{ "result": "обработанная строка" }',64,560,627,53,24);
+ label(s,'Настройки в YAML',744,225,470);
+ text(s,'Разрешение обращения\nКатегории ПД\nРазрешение восстановления\nФормат масок',744,303,470,211,25);
+ text(s,'Новый потребитель добавляется\nчерез конфигурацию.',744,552,470,68,23,C.gray);
+ note(s,'В текущем deployment система задана конфигурацией. Авторизации отправителя в публичном API нет.');
 }
-// 21. Appendix test protocol.
+// 10. Состояние определяется наличием сессии и содержимым payload, а не счётчиком запросов.
 {
- const s=base('Приложение: как измеряли нагрузку','Сравнивать среды можно только вместе с условиями испытаний.',['docs/REQUIREMENTS.md','docs/ARCHITECTURE.md','submission/railway-load-probe-2026-09-23.md']);
- para(s,'Профиль: 300 секунд после прогрева, целевая подача 1000 операций/с. Одна операция означает отдельное маскирование или восстановление. Успешный повтор не скрывает ошибку предыдущей попытки.',66,285,1090,123,21);
- label(s,'Локальный компьютер',66,455,520);para(s,'8 рабочих процессов; 300 001 успешная операция; ошибок и 429 нет.',66,493,515,109,21);
- label(s,'Публичный Railway',662,455,520);para(s,'193 444 успешных операций; 76 483 ответа 429; 10 019 пропущенных итераций.',662,493,536,109,21);
- foot(s,'Подробные условия и первичные метрики k6 находятся в submission/railway-load-probe-2026-09-23.md.');
+ const s=slide('Жизненный цикл сессии',['src/llm_proxy/application/process_service.py','src/llm_proxy/state/redis_store.py']);
+ const req=box(s,'Запрос\npayload_id + payload',64,249,255,78,{size:22});
+ const lookup=box(s,'Поиск сессии\nсистема + payload_id',420,249,355,78,{size:22});connect(s,req,lookup);
+ const absent=box(s,'Сессии нет\nПоиск ПД и маскирование',64,394,480,88,{size:23});
+ const existing=box(s,'Сессия найдена\nСравнение payload',695,394,520,88,{size:23});
+ connect(s,lookup,absent,'bottom','top');connect(s,lookup,existing,'bottom','top');
+ text(s,'Создать зашифрованную запись в Redis.\nTTL после маскирования: 15 минут.\nВернуть маскированный текст.',64,517,535,115,22);
+ text(s,'Исходный текст: вернуть прежнюю маску.\nМаска: вернуть исходную строку.\nОтвет LLM: восстановить известные маски.',695,507,520,116,22);
+ note(s,'После восстановления TTL = 2 минуты. По истечении TTL Redis удаляет запись. Сроки настраиваются.');
+ s.speakerNotes.textFrame.setText('Источники: '+REF+'src/llm_proxy/application/process_service.py\n'+REF+'src/llm_proxy/state/redis_store.py\nДетали: ключ привязан к системе и payload_id. SET NX предотвращает перезапись при конкурентном создании. При существующей сессии сначала проверяется payload == original_text, затем masked_text, затем выполняется восстановление известных масок. После demask EXPIRE устанавливает TTL 120 с заново. При allow_demask=false возвращается 403. После утраты сессии новый запрос обрабатывается как создание сессии, исходные значения восстановить невозможно. Redis недоступен: 503. Сроки 900/120 с — значения по умолчанию.');
 }
-
+// 11. Наблюдаемость с точным смыслом метрик.
+{
+ const s=slide('Логи, метрики и наблюдаемость',['src/llm_proxy/observability/metrics.py','src/llm_proxy/observability/logging.py']);
+ label(s,'Логи обработки',64,239,510);
+ text(s,'Операция и код ответа\nТипы и число найденных ПД\nВремя поиска и обращения к Redis',64,305,520,190,26);
+ label(s,'Метрики /metrics',704,239,510);
+ text(s,'Latency: время ответа\nRPS: запросы в секунду\nTPS: текстовые единицы в секунду\nОшибки, 429 и активные запросы',704,305,512,190,26);
+ rule(s,64,543,1152);
+ text(s,'Исходный текст и значения ПД не включаются в логи и метрики.\nСоответствия для восстановления хранятся в Redis под AES-GCM.',64,567,1152,72,24);
+ note(s,'TPS использует разделение по пробелам. Это не токенизатор конкретной LLM.');
+}
+// 12. Пример инженерной работы и измеренного улучшения, без необъяснённых метрик.
+{
+ const s=slide('Улучшение поиска в анкетах',['docs/TASK_IMPROVE_PII_DETECTION.md','scripts/eval_labeled_sample.py','https://github.com/rp-alpha-vibe/llm-proxy/commit/73153457f2b6aba31b61d933b45636d56ee961ee']);
+ text(s,'Проверка: 200 синтетических анкет по 22 поля.\nВсего 4400 значений, которые нужно закрыть маской правильного типа.',64,221,1152,97,26);
+ label(s,'До доработки',64,358,470);label(s,'Текущая версия',704,358,490);
+ text(s,'1 902 из 4 400',64,407,560,76,43,C.ink,true);
+ text(s,'4 400 из 4 400',704,407,512,76,43,C.red,true);
+ text(s,'43,23% полей полностью закрыты',64,486,570,46,23,C.gray);
+ text(s,'100% полей полностью закрыты',704,486,512,46,23,C.gray);
+ text(s,'Добавили разбор полей по меткам, границы адресных компонентов\nи варианты дат. Контекстные правила не зависят только от контрольной суммы.',64,554,1152,76,24);
+ note(s,'Результат относится к этой выборке анкет. Качество произвольного текста проверяется отдельно.');
+ s.speakerNotes.textFrame.setText('ТЗ ds.pdf: §4.1–4.3. До: docs/TASK_IMPROVE_PII_DETECTION.md, baseline f42d0be, 1902/4400. После: свежий запуск 23.09.2026 scripts/eval_labeled_sample.py --sample synthetic_pdn_requests_200_utf8.txt, lines=200, fields_covered=4400/4400, false_positives=0, exact_round_trip=200/200. Исходная выборка вне репозитория. Измеряется полное покрытие поля правильным типом, а не точное совпадение границ: detection.start <= field.start, detection.end >= field.end. Это не официальный scoring и не независимый тест: правила улучшали на этой выборке.\n'+REF+'scripts/eval_labeled_sample.py\n'+REF+'docs/TASK_IMPROVE_PII_DETECTION.md');
+}
+// 13. Что именно проверяли и что означает результат.
+{
+ const s=slide('Проверка корректности',['src/llm_proxy/quality/corpus.yaml','src/llm_proxy/quality/runner.py','tests/test_product_demask.py']);
+ text(s,'56 синтетических примеров с заранее заданными типами и границами ПД.\nВ набор входят разные форматы, пересечения и тексты без персональных данных.',64,218,1152,85,25);
+ table(s,['Что проверяли','Результат на текущем наборе'],[
+ ['Тип и точные границы найденных ПД','Все совпали с разметкой'],
+ ['Лишние срабатывания и пропуски','0 лишних находок, 0 пропусков'],
+ ['Маскирование и обратное восстановление','Исходная строка восстановлена в 56 из 56 примеров']
+ ],335,[510,642],69);
+ note(s,'Локальные тесты не подтверждают порог 95% на скрытом наборе AlfaSonar. Внешний результат открыт.');
+}
+// 14. Производительность: цели и измерения с честным разделением окружений.
+{
+ const s=slide('Результаты нагрузочных испытаний',['docs/ARCHITECTURE.md','submission/railway-load-probe-2026-09-23.md']);
+ text(s,'Цель ТЗ: 1000 запросов/с, ориентир времени ответа до 1 с.\nПрофиль команды: 300 секунд после прогрева, маскирование и восстановление.',64,215,1152,83,25);
+ table(s,['Метрика','Локально, 8 процессов','Railway'],[
+ ['Успешных операций/с','≈1000','≈645'],
+ ['Время ответа для 95% операций','≤21,78 мс','≈10 с'],
+ ['Ошибки','0','≈33%']
+ ],322,[485,345,322],68);
+ text(s,'На локальном профиле цель достигнута. Публичный deployment\nвыдержал короткий тест 100 запросов/с, но не прошёл профиль 1000 запросов/с.',64,602,1152,63,23);
+ s.speakerNotes.textFrame.setText('Источники: '+REF+'docs/ARCHITECTURE.md\n'+REF+'submission/railway-load-probe-2026-09-23.md\nМетрики из сохранённых прогонов, повторно в рамках изменения слайдов не запускались. Локально 300001/300=1000.003 уникальных успешных операций/с, p95=21.78 мс, 0 ошибок и 429. Railway 193444/300=644.813 успешных операций/с, p95 около 10 с, ошибки около 33%, 76483 ответа 429. Короткий Railway probe: 100/с в течение 30 с, ошибок нет. Одна операция — маскирование либо восстановление; пара содержит две операции. 100000 условных токенов проверялись отдельно, а не при 1000 RPS. Эти показатели не характеризуют все возможные payload и текущую версию без нового прогона.');
+}
+// 15. Завершение: результат, границы и прямые ссылки на демонстрацию.
+{
+ const s=slide('Результат проекта',['README.md','submission/CHECKLIST.md']);
+ label(s,'Реализовано',64,229,600);
+ text(s,'Сервис маскирования ПД с обратным восстановлением,\nнастройками систем и зашифрованными сессиями.\nЛокальные проверки подтверждают работу на тестовых наборах.',64,283,1152,133,28);
+ label(s,'Остаётся подтвердить',64,446,620);
+ text(s,'Качество и совместимость в AlfaSonar, внешнюю проверку ZIP\nи целевую нагрузку на публичном сервере.',64,493,1152,76,25,C.gray);
+ link(s,'Демонстрация API','https://llm-proxy-production-84c7.up.railway.app/docs',64,589,480,24);
+ link(s,'Исходный код на GitHub','https://github.com/rp-alpha-vibe/llm-proxy',704,589,512,24);
+ note(s,'Публичный API предназначен для синтетических данных. Соответствие стандартам ИБ банка не подтверждено.');
+}
 await fs.mkdir(TMP_DIR,{recursive:true});
 await fs.mkdir(path.dirname(FINAL_PPTX),{recursive:true});
-const candidate=path.join(TMP_DIR,'presentation-candidate.pptx');
+const candidate=path.join(TMP_DIR,'candidate.pptx');
 await (await PresentationFile.exportPptx(P)).save(candidate);
-const receipt=path.join(TMP_DIR,`${path.basename(FINAL_PPTX)}.validation.json`);
-const result=await finalizePresentation({
-  workspaceDir:path.dirname(TMP_DIR),candidatePath:candidate,finalPath:FINAL_PPTX,
-  pythonExecutable:RUNTIME_PYTHON,
-  integrityValidatorPath:path.join(SKILL_DIR,'container_tools/inspect_presentation_package_integrity.py'),
-  layoutValidatorPath:path.join(SKILL_DIR,'container_tools/inspect_presentation_layout_geometry.py'),
-  layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-heading-fit',
-    '--require-native-table-slide','15','--require-native-table-slide','17'],
-  requiredNativeTableOwnerSlides:[15,17],
-  fontPolicy:{basis:'design',families:[FONT]},
-  verifyArtifactToolImport:true,receiptPath:receipt,
-});
-console.log(JSON.stringify({slides:slideNo,candidate,final:FINAL_PPTX,result}));
+const workspaceDir=path.resolve(process.env.WORKSPACE_DIR ?? path.dirname(TMP_DIR));
+await finalizePresentation({workspaceDir,candidatePath:candidate,finalPath:FINAL_PPTX,pythonExecutable:RUNTIME_PYTHON,
+ integrityValidatorPath:path.join(SKILL_DIR,'container_tools/inspect_presentation_package_integrity.py'),
+ layoutValidatorPath:path.join(SKILL_DIR,'container_tools/inspect_presentation_layout_geometry.py'),
+ layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-heading-fit','--require-native-table-slide','13','--require-native-table-slide','14'],
+ explicitTotalSlideCount:15,requiredNativeTableOwnerSlides:[13,14],fontPolicy:{basis:'design',families:[FONT]},verifyArtifactToolImport:true,
+ receiptPath:path.join(TMP_DIR,'validation.json')});
+// Render the finalized PPTX, so previews and PDF correspond to the delivered package.
+const finalDeck=await PresentationFile.importPptx(await FileBlob.load(FINAL_PPTX));
+const previews=path.join(TMP_DIR,'rendered');await fs.mkdir(previews,{recursive:true});
+for(let i=0;i<finalDeck.slides.items.length;i++){
+ const preview=await finalDeck.export({slide:finalDeck.slides.items[i],format:'png',scale:2});
+ await fs.writeFile(path.join(previews,`slide-${i+1}.png`),new Uint8Array(await preview.arrayBuffer()));
+ console.log(`Rendered ${i+1}/15`);
+}
+await fs.writeFile(path.join(TMP_DIR,'slide-text.json'),JSON.stringify(slideTexts,null,2));
+console.log(JSON.stringify({slides:15,pptx:FINAL_PPTX,previews}));
