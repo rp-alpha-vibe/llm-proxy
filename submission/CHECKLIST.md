@@ -8,8 +8,8 @@
 | Элемент | Статус | Значение / действие |
 | --- | --- | --- |
 | Source ZIP | готово локально | `python scripts/package.py` → `dist/llm-proxy-src.zip` |
-| Презентация | готово к экспорту | `submission/presentation.html` → Print → PDF (до 50 МБ) |
-| Ссылка на VCS | есть, но **private** | https://github.com/rp-alpha-vibe/llm-proxy |
+| Презентация | подготовлена | [PDF](final/llm-proxy-final.pdf) для загрузки на форму; [PowerPoint](final/llm-proxy-final.pptx) для правок; единый [исходник](build_presentation.mjs) |
+| Ссылка на VCS | доступна публично при последней проверке | https://github.com/rp-alpha-vibe/llm-proxy |
 | Публичный URL сервиса | **Railway, работает сейчас** | https://llm-proxy-production-84c7.up.railway.app |
 | Нагрузка Railway | probe 100 RPS **pass**; полный 1000/300 с **block** | [отчёт](railway-load-probe-2026-09-23.md); ~33% ошибок, 76k×429, p95≈10 с |
 | Внешняя проверка ZIP на сайте | не подтверждена | отдельный шаг формы |
@@ -21,8 +21,8 @@ Railway не зависит от локального ПК. Limited Trial даё
 
 ## Что должен сделать владелец
 
-1. Решить, может ли репозиторий быть public, или выдать организаторам read-доступ. Сейчас `isPrivate: true`.
-2. Открыть `submission/presentation.html` в браузере → Print → Save as PDF и загрузить PDF на форму.
+1. Перед отправкой проверить, что у организаторов открывается ссылка на репозиторий.
+2. Загрузить `submission/final/llm-proxy-final.pdf` на форму; в репозитории также хранится редактируемая версия PowerPoint.
 3. Использовать постоянный Railway URL из таблицы; перед отправкой проверить `/healthz` и остаток кредита в Railway.
 4. Загрузить на сайт: ZIP, PDF презентации, VCS URL, URL сервиса.
 5. Не путать предварительную проверку ZIP с окончательной отправкой формы.
