@@ -1,7 +1,7 @@
-import re
-from collections.abc import Collection, Sequence
+from collections.abc import Sequence
 
-from llm_proxy.detection.models import Detection, Detector, PiiType
+from llm_proxy.detection.models import Detection
+from llm_proxy.detection.structured.email import EmailDetector
 from llm_proxy.masking.base import (
     MaskContext,
     MaskedEntity,
@@ -10,27 +10,9 @@ from llm_proxy.masking.base import (
     apply_replacements,
 )
 
-_EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 
-
-class SimpleEmailDetector(Detector):
-    def detect(
-        self,
-        text: str,
-        enabled_types: Collection[PiiType],
-    ) -> Sequence[Detection]:
-        if PiiType.EMAIL not in enabled_types:
-            return ()
-        return tuple(
-            Detection(
-                type=PiiType.EMAIL,
-                start=match.start(),
-                end=match.end(),
-                confidence=1.0,
-                detector_id="simple-email",
-            )
-            for match in _EMAIL_PATTERN.finditer(text)
-        )
+class SimpleEmailDetector(EmailDetector):
+    pass
 
 
 class SimplePlaceholderMaskStrategy(MaskStrategy):

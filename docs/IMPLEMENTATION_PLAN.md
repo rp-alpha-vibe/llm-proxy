@@ -226,15 +226,15 @@ HTTP -> policy -> ProcessService -> Redis -> result
 
 ### Tasks
 
-- [ ] E6.1 Email: valid/invalid, punctuation, case.
-- [ ] E6.2 Phone: +7/8, spaces, dashes, parentheses, negatives.
-- [ ] E6.3 INN: 10/12 digits + checksum.
-- [ ] E6.4 PAN: accepted layouts + Luhn + negative long numbers.
-- [ ] E6.5 Passport series/number: compact/spaced/context variants.
-- [ ] E6.6 Division code: format + context.
-- [ ] E6.7 Russian driver license formats.
-- [ ] E6.8 Для каждого detector добавить positive/format/case/negative/multiple/punctuation fixtures.
-- [ ] E6.9 Microbenchmark типичного и pathological input для новых regex/scanners.
+- [x] E6.1 Email: valid/invalid, punctuation, case.
+- [x] E6.2 Phone: +7/8, spaces, dashes, parentheses, negatives.
+- [x] E6.3 INN: 10/12 digits + checksum.
+- [x] E6.4 PAN: accepted layouts + Luhn + negative long numbers.
+- [x] E6.5 Passport series/number: compact/spaced/context variants.
+- [x] E6.6 Division code: format + context.
+- [x] E6.7 Russian driver license formats.
+- [x] E6.8 Для каждого detector добавить positive/format/case/negative/multiple/punctuation fixtures.
+- [x] E6.9 Microbenchmark типичного и pathological input для новых regex/scanners.
 
 ### Acceptance
 

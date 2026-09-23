@@ -84,7 +84,7 @@ Status: **accepted baseline**
 health -> /healthz
 ```
 
-Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine`; подключённый детектор и renderer маски пока stub в `application/stubs.py`. Детекторы категорий и отдельные mask strategy — следующие эпики.
+Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine` и structured-детекторы email, phone, INN, PAN, паспорт, код подразделения и водительское удостоверение. Контекстные категории и отдельные mask strategy ещё не подключены: renderer маски остаётся placeholder stub в `application/stubs.py`.
 
 Один deploy содержит приложение и Redis. Kubernetes, Kafka/RabbitMQ, PostgreSQL, Celery и отдельные microservices не входят в baseline.
 
@@ -515,7 +515,17 @@ src/llm_proxy/
 │   ├── registry.py
 │   ├── context.py
 │   ├── overlap.py
-│   └── engine.py
+│   ├── engine.py
+│   └── structured/
+│       ├── __init__.py
+│       ├── common.py
+│       ├── email.py
+│       ├── phone.py
+│       ├── inn.py
+│       ├── pan.py
+│       ├── passport.py
+│       ├── division_code.py
+│       └── driver_license.py
 ├── masking/
 │   └── base.py
 ├── state/

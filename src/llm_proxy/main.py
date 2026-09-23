@@ -10,10 +10,10 @@ from llm_proxy.api.process import (
 )
 from llm_proxy.application.overload import ConcurrencyGate
 from llm_proxy.application.process_service import ProcessService
-from llm_proxy.application.stubs import SimpleEmailDetector, SimplePlaceholderMaskStrategy
+from llm_proxy.application.stubs import SimplePlaceholderMaskStrategy
 from llm_proxy.detection.engine import PiiEngine
-from llm_proxy.detection.models import PiiType
-from llm_proxy.detection.registry import DetectorPriority, DetectorRegistry
+from llm_proxy.detection.registry import DetectorRegistry
+from llm_proxy.detection.structured import register_structured_detectors
 from llm_proxy.policies.consumer_resolver import ConfigConsumerResolver
 from llm_proxy.policies.loader import YamlPolicyRegistry
 from llm_proxy.policies.models import ConsumerResolver
@@ -31,11 +31,7 @@ def _build_consumer_resolver(settings: Settings) -> ConsumerResolver:
 
 def _build_detector() -> PiiEngine:
     registry = DetectorRegistry()
-    registry.register(
-        SimpleEmailDetector(),
-        types=(PiiType.EMAIL,),
-        priority=DetectorPriority.STRUCTURED,
-    )
+    register_structured_detectors(registry)
     return PiiEngine(registry)
 
 
