@@ -402,16 +402,16 @@ Latency/RPS/TPS и detected PII types наблюдаемы; несколько w
 
 ### Tasks
 
-- [ ] E13.1 Microbench всех hot detectors: typical/long/pathological.
-- [ ] E13.2 Проверить payload до 100 000 токенов отдельным profile.
-- [ ] E13.3 Искать catastrophic regex, quadratic passes, repeated full scans, excessive copies/allocations.
-- [ ] E13.4 Реализовать k6 stateful mask -> unmask scenario.
-- [ ] E13.5 300s baseline после warm-up на 1000 target RPS.
-- [ ] E13.6 Измерять offered RPS, unique successful RPS, p50/p95/p99/max, attempts, errors, 429, CPU, memory, Redis latency.
-- [ ] E13.7 Baseline должен пройти thresholds из `REQUIREMENTS.md §7.1`.
-- [ ] E13.8 Экспериментально подобрать worker count, Redis pool, concurrency limit.
-- [ ] E13.9 Отдельный overload profile: 429 + Retry-After, bounded memory, recovery после снижения нагрузки.
-- [ ] E13.10 Оптимизировать только измеренный bottleneck, затем повторить relevant tests.
+- [x] E13.1 Microbench всех hot detectors: typical/long/pathological.
+- [x] E13.2 Проверить payload до 100 000 токенов отдельным profile.
+- [x] E13.3 Искать catastrophic regex, quadratic passes, repeated full scans, excessive copies/allocations.
+- [x] E13.4 Реализовать k6 stateful mask -> unmask scenario.
+- [x] E13.5 300s baseline после warm-up на 1000 target RPS.
+- [x] E13.6 Измерять offered RPS, unique successful RPS, p50/p95/p99/max, attempts, errors, 429, CPU, memory, Redis latency.
+- [x] E13.7 Baseline должен пройти thresholds из `REQUIREMENTS.md §7.1`.
+- [x] E13.8 Экспериментально подобрать worker count, Redis pool, concurrency limit.
+- [x] E13.9 Отдельный overload profile: 429 + Retry-After, bounded memory, recovery после снижения нагрузки.
+- [x] E13.10 Оптимизировать только измеренный bottleneck, затем повторить relevant tests.
 
 ### Acceptance
 

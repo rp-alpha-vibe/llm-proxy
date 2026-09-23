@@ -476,7 +476,7 @@ Redis GET -> AES-GCM decrypt -> compare -> return original
 - workers масштабируют CPU-bound detection по cores;
 - Redis обеспечивает общий state между workers.
 
-Точный worker count, concurrency limit и Redis pool size выбираются benchmark'ом, не фиксируются на глаз.
+Локальный baseline, прошедший §7.1 на этой машине, использовал 8 worker processes и `max_concurrency` 1000 на process. Redis pool оставлен стандартным: узким местом первого прогона был лимит VU у генератора, не пул. Другое окружение нужно мерить заново.
 
 Алгоритмы detectors должны избегать catastrophic backtracking, квадратичных проходов и неконтролируемого копирования больших строк.
 
@@ -580,7 +580,7 @@ scripts/
 
 ## 16. Verification mapping
 
-Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E12 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus, security tests, structured completion log и Prometheus metrics. k6 и ZIP ещё не собраны.
+Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E13 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus, security tests, structured completion log, Prometheus metrics и локальный k6 baseline. ZIP ещё не собран.
 
 | Requirement | Architecture | Запланированное доказательство |
 | --- | --- | --- |
