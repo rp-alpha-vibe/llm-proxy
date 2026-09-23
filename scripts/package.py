@@ -103,30 +103,44 @@ BLACKLIST_SUFFIXES = (
     ".mp3",
 )
 
-SUBMISSION_README = """# llm-proxy
+SUBMISSION_README = """# llm-proxy — модуль защиты персональных данных
 
-HTTP module that masks personal data before an LLM call.
+Проект хакатона «Альфавайб». Сервис обнаруживает в тексте персональные данные, заменяет их обозначениями и по повторному запросу восстанавливает известные значения. Сам llm-proxy **не вызывает языковую модель**: приложение отправляет очищенный текст модели и позже передаёт полученный ответ для восстановления данных.
 
-## Setup
+## Как запустить
 
-Copy `.env.example` to `.env` and set `LLM_PROXY_ENCRYPTION_KEY` to 16, 24, or 32 bytes.
-`LLM_PROXY_DEFAULT_CONSUMER_ID` must match a key under `systems` in `config/systems.example.yaml`.
-Keep `alfa_tester` for the competition policy that renders the local reversible `<TYPE_n>` token.
-Pass the session encryption key only through the environment; do not commit secrets.
-Redis stays on the private compose network and is not published.
-
-## Run
+Понадобится Docker с Docker Compose; Python на компьютере не обязателен. В папке проекта скопируйте `.env.example` в `.env` (Linux/macOS: `cp .env.example .env`; PowerShell: `Copy-Item .env.example .env`). Задайте `LLM_PROXY_ENCRYPTION_KEY`: случайные 32 однобайтовых символа (ASCII); храните ключ только локально и не загружайте в репозиторий. Оставьте демонстрационные настройки `LLM_PROXY_DEFAULT_CONSUMER_ID=alfa_tester`.
 
 ```bash
 docker compose up --build -d
 curl http://localhost:8000/healthz
-curl -X POST http://localhost:8000/process \\
-  -H "Content-Type: application/json" \\
-  -d "{\\"payload\\":\\"contact user@example.com\\",\\"payload_id\\":\\"demo-1\\"}"
 ```
 
-Call `POST /process` with `payload` and `payload_id` only.
-Stop the stack with `docker compose down`.
+Проверка должна вернуть `{"status":"ok"}`. Эта проверка подтверждает ответ самого приложения, но не работу временного хранилища.
+
+## Пример обращения
+
+Запрос на маскирование **вымышленного** адреса:
+
+```bash
+curl -X POST "http://localhost:8000/process" \\
+  -H "Content-Type: application/json" \\
+  --data '{"payload":"Напишите на ivan@example.com.","payload_id":"archive-demo-001"}'
+```
+
+В ответ придёт JSON с полем `result`, например: `{"result":"Напишите на <EMAIL_1>."}`. Чтобы восстановить адрес, отправьте полученную строку из `result` в поле `payload` **с тем же** `payload_id`. Для восстановления данных в ответе языковой модели можно передать другой текст, содержащий уже известное обозначение, например `Ответьте сегодня на <EMAIL_1>.`. Изменённый текст сохранится, а обозначение будет заменено исходным адресом. Для новой независимой проверки используйте новый идентификатор.
+
+`POST /process` принимает только два обязательных поля: `payload` (текст) и `payload_id` (идентификатор связанной последовательности запросов), а отвечает полем `result`. Запросы к языковой модели выполняет вызывающее приложение.
+
+## Состав и настройка
+
+Контейнер приложения использует FastAPI (обработка HTTP-запросов) и Redis (временное хранилище зашифрованных соответствий). В этой сборке Redis доступен только внутри сети Docker; данные удаляются автоматически по истечении срока. Система не записывает исходные персональные данные в технические журналы. Это исходный архив для проверки, поэтому внутренняя документация и сценарии испытаний в него не входят.
+
+Для настройки другого приложения добавьте запись в раздел `systems` файла `config/systems.example.yaml`. Параметры `enabled`, `pii_types`, `allow_demask` и `mask_strategy` определяют доступ, категории поиска, разрешение восстановления и вид обозначений. Установите `LLM_PROXY_DEFAULT_CONSUMER_ID` равным идентификатору этой записи и перезапустите контейнеры. Выбор приложения происходит настройками развёртывания, а не дополнительным полем запроса.
+
+Остановка: `docker compose down`.
+
+**Термины:** персональные данные (PII) — сведения о человеке; языковая модель (LLM) — система искусственного интеллекта для обработки текста; маскирование — временная замена данных обозначениями; демаскирование — восстановление ранее заменённых данных.
 """
 
 
