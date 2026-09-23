@@ -242,6 +242,43 @@ def test_consumer_policy_rejects_duplicates_unknown_strategy_and_blank_ids() -> 
             mask_strategy="placeholder",
         )
 
+    with pytest.raises(ValidationError, match="enabled policy must declare pii_types"):
+        ConsumerPolicy(
+            policy_id="policy-1",
+            system_id="consumer-1",
+            enabled=True,
+            pii_types=(),
+            allow_demask=True,
+            mask_strategy="placeholder",
+        )
+
+    disabled = ConsumerPolicy(
+        policy_id="policy-1",
+        system_id="consumer-1",
+        enabled=False,
+        pii_types=(),
+        allow_demask=False,
+        mask_strategy="placeholder",
+    )
+    assert disabled.pii_types == ()
+
+
+def test_consumer_context_rejects_blank_and_mismatched_ids() -> None:
+    policy = ConsumerPolicy(
+        policy_id="policy-1",
+        system_id="consumer-1",
+        enabled=True,
+        pii_types=(PiiType.EMAIL,),
+        allow_demask=True,
+        mask_strategy="placeholder",
+    )
+
+    with pytest.raises(ValidationError, match="consumer_id must not be blank"):
+        ConsumerContext(consumer_id="   ", policy=policy)
+
+    with pytest.raises(ValidationError, match=r"consumer_id must match policy\.system_id"):
+        ConsumerContext(consumer_id="other", policy=policy)
+
 
 def test_consumer_context_and_domain_protocols_are_defined() -> None:
     policy = ConsumerPolicy(

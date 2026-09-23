@@ -2,6 +2,7 @@ import asyncio
 from collections.abc import Collection, Sequence
 
 import pytest
+from pydantic import ValidationError
 
 from llm_proxy.application.process_service import (
     DemaskNotAllowedError,
@@ -395,8 +396,5 @@ async def test_foreign_policy_record_is_rejected() -> None:
 
 def test_process_service_rejects_mismatched_consumer_context() -> None:
     policy = make_policy("consumer-1", policy_id="policy-1")
-    context = ConsumerContext(consumer_id="consumer-2", policy=policy)
-    service, _ = make_service(MemoryStateStore())
-
-    with pytest.raises(ValueError, match="consumer policy mismatch"):
-        asyncio.run(service.process(context, "payload-1", SINGLE_PERSON))
+    with pytest.raises(ValidationError, match=r"consumer_id must match policy\.system_id"):
+        ConsumerContext(consumer_id="consumer-2", policy=policy)

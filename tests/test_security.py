@@ -321,11 +321,21 @@ async def _redis_reachable(redis_url: str) -> bool:
     return True
 
 
+def _require_or_skip_redis(reachable: bool, reason: str) -> None:
+    if reachable:
+        return
+    if os.environ.get("LLM_PROXY_REQUIRE_REDIS") == "1":
+        pytest.fail(f"Redis is required but not reachable: {reason}")
+    pytest.skip(reason)
+
+
 @pytest.mark.asyncio
 async def test_real_redis_ttl_deletes_the_session() -> None:
     redis_url = _redis_url()
-    if not await _redis_reachable(redis_url):
-        pytest.skip("Redis is not available for TTL cleanup")
+    _require_or_skip_redis(
+        await _redis_reachable(redis_url),
+        "Redis is not available for TTL cleanup",
+    )
 
     codec = SessionRecordCodec(SecretStr("0123456789abcdef0123456789abcdef"))
     store = RedisStateStore(redis_url, codec)

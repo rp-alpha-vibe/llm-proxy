@@ -600,11 +600,21 @@ async def _redis_is_reachable(redis_url: str) -> bool:
     return True
 
 
+def _require_or_skip_redis(reachable: bool, reason: str) -> None:
+    if reachable:
+        return
+    if os.environ.get("LLM_PROXY_REQUIRE_REDIS") == "1":
+        pytest.fail(f"Redis is required but not reachable: {reason}")
+    pytest.skip(reason)
+
+
 @pytest.mark.asyncio
 async def test_http_redis_mask_retry_and_exact_unmask(tmp_path: Path) -> None:
     redis_url = _redis_smoke_url()
-    if not await _redis_is_reachable(redis_url):
-        pytest.skip("Redis is not available for the HTTP smoke")
+    _require_or_skip_redis(
+        await _redis_is_reachable(redis_url),
+        "Redis is not available for the HTTP smoke",
+    )
 
     config_path = tmp_path / "systems.yaml"
     write_config(
@@ -659,6 +669,67 @@ async def test_http_redis_mask_retry_and_exact_unmask(tmp_path: Path) -> None:
         assert isinstance(stored, bytes)
         assert original.encode() not in stored
         assert b"synthetic@example.test" not in stored
+    finally:
+        await probe.delete(redis_key)
+        await probe.aclose()
+        await service._state_store.close()
+
+
+@pytest.mark.asyncio
+async def test_http_redis_large_payload_mask_and_exact_unmask(tmp_path: Path) -> None:
+    redis_url = _redis_smoke_url()
+    _require_or_skip_redis(
+        await _redis_is_reachable(redis_url),
+        "Redis is not available for the large payload HTTP test",
+    )
+
+    config_path = tmp_path / "systems.yaml"
+    write_config(
+        config_path,
+        """systems:
+  alfa_tester:
+    enabled: true
+    pii_types: all
+    allow_demask: true
+    mask_strategy: competition
+""",
+    )
+    token = "abcdefghijklmnop"
+    original = f"{' '.join([token] * 100_000)} contact synthetic@example.test"
+    assert len(original.split()) >= 100_000
+    assert len(original) > 1_000_000
+    payload_id = "redis-large-1"
+    redis_key = make_session_key("alfa_tester", payload_id)
+    settings = make_settings(config_path, redis_url=redis_url)
+    app = create_app(
+        settings,
+        consumer_resolver=make_resolver(config_path, "alfa_tester"),
+    )
+    service = app.state.process_service
+    assert service is not None
+    probe = redis.Redis.from_url(redis_url, decode_responses=False)
+    try:
+        await probe.delete(redis_key)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            timeout=120.0,
+        ) as client:
+            masked_response = await client.post(
+                "/process",
+                json={"payload": original, "payload_id": payload_id},
+            )
+            assert masked_response.status_code == 200
+            masked = masked_response.json()["result"]
+            assert "synthetic@example.test" not in masked
+            assert "<EMAIL_1>" in masked
+            unmask_response = await client.post(
+                "/process",
+                json={"payload": masked, "payload_id": payload_id},
+            )
+
+        assert unmask_response.status_code == 200
+        assert unmask_response.json() == {"result": original}
     finally:
         await probe.delete(redis_key)
         await probe.aclose()

@@ -84,7 +84,7 @@ Status: **accepted baseline**
 health -> /healthz
 ```
 
-Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine`: structured-детекторы и контекстные правила для дат, CVV, PIN, гражданства, места рождения, органа выдачи, адреса, ФИО и держателя карты. Эти правила требуют личного или документного якоря, поэтому публичное упоминание, обычная дата и адрес организации сами по себе не маскируются. `mask_strategy` выбирает renderer: `placeholder` пишет `[[PII:TYPE:n]]`, `competition` пишет `<TYPE_n>`. Форма `<TYPE_n>` — локальное обратимое допущение по иллюстрации §5.1, а не подтверждённый официальный формат. Локальный NLP/NER не подключён.
+Схема задаёт целевой поток. Сейчас работают `POST /process`, `GET /healthz` и `GET /metrics`. Structured logs пишутся на каждый `POST /process`. Detection идёт через `PiiEngine`: structured-детекторы и контекстные правила для дат, CVV, PIN, гражданства, места рождения, органа выдачи, адреса, ФИО и держателя карты. Эти правила требуют личного или документного якоря, поэтому публичное упоминание, обычная дата и адрес организации сами по себе не маскируются. `mask_strategy` выбирает renderer: `placeholder` пишет `[[PII:TYPE:n]]`, `competition` пишет `<TYPE_n>`. Форма `<TYPE_n>` — локальное обратимое допущение по иллюстрации §5.1, а не подтверждённый официальный формат. Локальный NLP/NER не подключён.
 
 Один deploy содержит приложение и Redis. Kubernetes, Kafka/RabbitMQ, PostgreSQL, Celery и отдельные microservices не входят в baseline.
 
@@ -106,7 +106,7 @@ E4 не добавляет обязательный auth/system header: consumer
 Допустимы:
 
 - `GET /healthz` — liveness: процесс отвечает. Redis и возможность записать сессию не проверяются; их отказ виден на `POST /process` как 503.
-- `GET /metrics` — технические метрики, маршрут добавляется в E12. Сейчас его нет.
+- `GET /metrics` — Prometheus exposition для Latency/RPS/TPS.
 
 Они не меняют обязательный контракт и не содержат raw PII.
 
@@ -476,7 +476,9 @@ Redis GET -> AES-GCM decrypt -> compare -> return original
 - workers масштабируют CPU-bound detection по cores;
 - Redis обеспечивает общий state между workers.
 
-Локальный baseline, прошедший §7.1 на этой машине, использовал 8 worker processes и `max_concurrency` 1000 на process. Redis pool оставлен стандартным: узким местом первого прогона был лимит VU у генератора, не пул. Другое окружение нужно мерить заново.
+Локальный baseline, прошедший §7.1 на этой машине, использовал 8 worker processes и `max_concurrency` 1000 на process. Redis pool оставлен стандартным: узким местом первого прогона был лимит VU у генератора, не пул. Для того же окна: offered 1000 RPS, unique successful 300001/300 ≈ 1000.003, attempts=successes, 0 ошибок, 0 ответов 429, p50 3.78 мс, p95 21.78 мс, p99 57.15 мс, max 286.37 мс. Память рабочих Python-процессов держалась около 585–701 МБ working set; суммарный CPU process time вырос примерно на 772 с за ~302 с окна при 24 логических CPU. Redis latency в чистом окне отдельно не изолировалась; lifetime `redis_duration_seconds` после обоих прогонов давал среднее около 18 мс. Другое окружение нужно мерить заново.
+
+`POST /process` принимает payload до 8 000 000 символов: это верхняя граница памяти, достаточная для профиля из 100 000 whitespace-токенов с более длинными словами, а не неограниченный поток.
 
 Алгоритмы detectors должны избегать catastrophic backtracking, квадратичных проходов и неконтролируемого копирования больших строк.
 
@@ -504,7 +506,7 @@ Redis не публикуется наружу.
 
 ## 15. Структура кода
 
-Текущее дерево. `scripts/package.py` собирает ZIP по allowlist `src/`, `config/` и файлам сборки, затем повторно открывает архив и отклоняет blacklist.
+Текущее дерево. `scripts/package.py` собирает ZIP по allowlist файлов сборки и исходников с разрешёнными суффиксами, подменяет README на самодостаточную инструкцию запуска, запрещает symlink и дубликаты, затем повторно открывает архив и отклоняет blacklist.
 
 ```text
 src/llm_proxy/
@@ -580,7 +582,7 @@ scripts/
 
 ## 16. Verification mapping
 
-Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E13 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus, security tests, structured completion log, Prometheus metrics и локальный k6 baseline. `scripts/package.py` собирает исходный ZIP и локально поднимает его через Docker; публичный URL и отдельная презентация ещё не готовы.
+Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E13 и E15.1–E15.10 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus, security tests, structured completion log, Prometheus metrics, локальный k6 baseline и source ZIP со smoke. E14, E15.11 и публичный URL ещё открыты.
 
 | Requirement | Architecture | Запланированное доказательство |
 | --- | --- | --- |

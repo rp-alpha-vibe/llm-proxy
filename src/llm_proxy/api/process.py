@@ -39,7 +39,9 @@ class APIError(Exception):
 class ProcessRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    payload: str = Field(min_length=1, max_length=1_000_000)
+    # Bound memory while accepting a 100_000-token profile (§7). Whitespace
+    # tokens can exceed 1_000_000 characters for longer words.
+    payload: str = Field(min_length=1, max_length=8_000_000)
     payload_id: str = Field(min_length=1, max_length=256)
 
     @field_validator("payload")

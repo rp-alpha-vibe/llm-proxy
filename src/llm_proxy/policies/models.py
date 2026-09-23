@@ -40,6 +40,8 @@ class ConsumerPolicy(BaseModel):
     def pii_types_must_be_unique(self) -> Self:
         if len(self.pii_types) != len(set(self.pii_types)):
             raise ValueError("pii_types must not contain duplicates")
+        if self.enabled and not self.pii_types:
+            raise ValueError("enabled policy must declare pii_types")
         return self
 
 
@@ -48,6 +50,19 @@ class ConsumerContext(BaseModel):
 
     consumer_id: str = Field(min_length=1)
     policy: ConsumerPolicy
+
+    @field_validator("consumer_id")
+    @classmethod
+    def consumer_id_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("consumer_id must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def consumer_must_match_policy_system(self) -> Self:
+        if self.consumer_id != self.policy.system_id:
+            raise ValueError("consumer_id must match policy.system_id")
+        return self
 
 
 class ConsumerResolver(Protocol):
