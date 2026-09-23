@@ -1,4 +1,4 @@
-# mask_strategy сохраняется в сессии. До появления отдельных renderer-ов оба значения дают один placeholder stub.
+# mask_strategy выбирает renderer: competition — локальный токен <TYPE_n>, placeholder — [[PII:TYPE:n]].
 systems:
   alfa_tester:
     enabled: true

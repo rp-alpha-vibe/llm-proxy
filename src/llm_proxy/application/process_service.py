@@ -1,5 +1,4 @@
 import re
-from collections import Counter
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -141,11 +140,12 @@ class ProcessService:
 
     @staticmethod
     def _demask_product(text: str, record: SessionRecord) -> str:
-        mask_counts = Counter(entity.rendered_mask for entity in record.entities)
+        values_by_mask: dict[str, set[str]] = {}
+        for entity in record.entities:
+            value = record.original_text[entity.original_start : entity.original_end]
+            values_by_mask.setdefault(entity.rendered_mask, set()).add(value)
         mappings = {
-            entity.rendered_mask: record.original_text[entity.original_start : entity.original_end]
-            for entity in record.entities
-            if mask_counts[entity.rendered_mask] == 1
+            mask: next(iter(values)) for mask, values in values_by_mask.items() if len(values) == 1
         }
         placeholder_tokens = {match.group(0) for match in _PLACEHOLDER_RE.finditer(text)}
         tokens = sorted(set(mappings) | placeholder_tokens, key=len, reverse=True)

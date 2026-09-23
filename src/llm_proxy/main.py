@@ -10,11 +10,14 @@ from llm_proxy.api.process import (
 )
 from llm_proxy.application.overload import ConcurrencyGate
 from llm_proxy.application.process_service import ProcessService
-from llm_proxy.application.stubs import SimplePlaceholderMaskStrategy
 from llm_proxy.detection.contextual import register_contextual_detectors
 from llm_proxy.detection.engine import PiiEngine
 from llm_proxy.detection.registry import DetectorRegistry
 from llm_proxy.detection.structured import register_structured_detectors
+from llm_proxy.masking.base import MaskStrategyName
+from llm_proxy.masking.competition import CompetitionMaskStrategy
+from llm_proxy.masking.placeholder import PlaceholderMaskStrategy
+from llm_proxy.masking.routing import RoutingMaskStrategy
 from llm_proxy.policies.consumer_resolver import ConfigConsumerResolver
 from llm_proxy.policies.loader import YamlPolicyRegistry
 from llm_proxy.policies.models import ConsumerResolver
@@ -37,6 +40,15 @@ def _build_detector() -> PiiEngine:
     return PiiEngine(registry)
 
 
+def _build_mask_strategy() -> RoutingMaskStrategy:
+    return RoutingMaskStrategy(
+        {
+            MaskStrategyName.PLACEHOLDER.value: PlaceholderMaskStrategy(),
+            MaskStrategyName.COMPETITION.value: CompetitionMaskStrategy(),
+        }
+    )
+
+
 def _build_process_service(settings: Settings) -> ProcessService | None:
     if settings.encryption_key is None:
         return None
@@ -47,7 +59,7 @@ def _build_process_service(settings: Settings) -> ProcessService | None:
     return ProcessService(
         state_store=state_store,
         detector=_build_detector(),
-        mask_strategy=SimplePlaceholderMaskStrategy(),
+        mask_strategy=_build_mask_strategy(),
         session_ttl_seconds=settings.session_ttl_seconds,
         post_demask_ttl_seconds=settings.post_demask_ttl_seconds,
     )

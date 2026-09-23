@@ -84,7 +84,7 @@ Status: **accepted baseline**
 health -> /healthz
 ```
 
-Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine`: structured-детекторы и контекстные правила для дат, CVV, PIN, гражданства, места рождения, органа выдачи, адреса, ФИО и держателя карты. Эти правила требуют личного или документного якоря, поэтому публичное упоминание, обычная дата и адрес организации сами по себе не маскируются. Отдельные mask strategy ещё не подключены: renderer маски остаётся placeholder stub в `application/stubs.py`. Локальный NLP/NER не подключён.
+Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine`: structured-детекторы и контекстные правила для дат, CVV, PIN, гражданства, места рождения, органа выдачи, адреса, ФИО и держателя карты. Эти правила требуют личного или документного якоря, поэтому публичное упоминание, обычная дата и адрес организации сами по себе не маскируются. `mask_strategy` выбирает renderer: `placeholder` пишет `[[PII:TYPE:n]]`, `competition` пишет `<TYPE_n>`. Форма `<TYPE_n>` — локальное обратимое допущение по иллюстрации §5.1, а не подтверждённый официальный формат. Локальный NLP/NER не подключён.
 
 Один deploy содержит приложение и Redis. Kubernetes, Kafka/RabbitMQ, PostgreSQL, Celery и отдельные microservices не входят в baseline.
 
@@ -337,7 +337,7 @@ Baseline interfaces, которые выбирает masking epic:
 - `CompetitionMaskStrategy` — формат, выбранный для официального scoring после проверки доступных примеров;
 - `PlaceholderMaskStrategy` — уникальные stable placeholders для надёжного product LLM-response demask.
 
-До этих renderer-ов `create_app` всегда использует placeholder stub из `application/stubs.py`. Имя `mask_strategy` из YAML сохраняется в сессии, но `competition` и `placeholder` сейчас дают один и тот же текст маски.
+До официального образца `CompetitionMaskStrategy` пишет обратимый токен `<TYPE_n>`. Это локальное допущение по форме иллюстрации в `docs/REQUIREMENTS.md`, §5.1, и не является подтверждённым форматом scoring. `PlaceholderMaskStrategy` пишет `[[PII:TYPE:n]]`. Повтор одного и того же значения получает тот же токен; разные значения получают разные номера. `create_app` выбирает renderer по `mask_strategy` из policy.
 
 `PlaceholderMaskStrategy` — внутренняя стратегия маскирования baseline, а не заявленная бонусная tokenization/detokenization feature из ТЗ. Полноценная настраиваемая токенизация остаётся bonus backlog.
 
@@ -498,7 +498,7 @@ Redis не публикуется наружу.
 
 ## 15. Структура кода
 
-Текущее дерево. Отдельные mask strategy, observability и `scripts/package.py` не создаются, пока у них нет реализации.
+Текущее дерево. Observability и `scripts/package.py` не создаются, пока у них нет реализации.
 
 ```text
 src/llm_proxy/
@@ -535,7 +535,11 @@ src/llm_proxy/
 │       ├── records.py
 │       └── address.py
 ├── masking/
-│   └── base.py
+│   ├── base.py
+│   ├── render.py
+│   ├── placeholder.py
+│   ├── competition.py
+│   └── routing.py
 ├── state/
 │   ├── models.py
 │   ├── redis_store.py

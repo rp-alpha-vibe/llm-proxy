@@ -278,14 +278,14 @@ Structured suite green; нет известных систематических
 
 ### Tasks
 
-- [ ] E8.1 Реализовать `MaskStrategy` interface.
-- [ ] E8.2 Реализовать `CompetitionMaskStrategy`.
-- [ ] E8.3 Подтверждённые примеры ТЗ использовать как regression fixtures.
-- [ ] E8.4 Не вшивать competition rendering в detectors.
-- [ ] E8.5 Реализовать `PlaceholderMaskStrategy` со stable unique placeholders для product flow; это внутренняя baseline mask strategy, а не bonus tokenization/detokenization.
-- [ ] E8.6 Повтор одной сущности в session должен иметь стабильную identity.
-- [ ] E8.7 Гарантировать invariant: текст вне PII spans не изменяется.
-- [ ] E8.8 Проверить mask collision/ambiguity safety.
+- [x] E8.1 Реализовать `MaskStrategy` interface.
+- [x] E8.2 Реализовать `CompetitionMaskStrategy`.
+- [x] E8.3 Подтверждённые примеры ТЗ использовать как regression fixtures.
+- [x] E8.4 Не вшивать competition rendering в detectors.
+- [x] E8.5 Реализовать `PlaceholderMaskStrategy` со stable unique placeholders для product flow; это внутренняя baseline mask strategy, а не bonus tokenization/detokenization.
+- [x] E8.6 Повтор одной сущности в session должен иметь стабильную identity.
+- [x] E8.7 Гарантировать invariant: текст вне PII spans не изменяется.
+- [x] E8.8 Проверить mask collision/ambiguity safety.
 
 ### Acceptance
 
