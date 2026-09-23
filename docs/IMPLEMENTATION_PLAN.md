@@ -301,9 +301,9 @@ Structured suite green; нет известных систематических
 
 ### Tasks
 
-- [ ] E9.1 Проверить E3 flow на competition masks и placeholders: reorder, repeat, missing и unknown/ambiguous tokens.
-- [ ] E9.2 Проверить изоляцию session/consumer и сохранение нового текста, пробелов и пунктуации на синтетическом ответе LLM.
-- [ ] E9.3 Исправить только выявленный регрессией gap, не вводя второй state machine.
+- [x] E9.1 Проверить E3 flow на competition masks и placeholders: reorder, repeat, missing и unknown/ambiguous tokens.
+- [x] E9.2 Проверить изоляцию session/consumer и сохранение нового текста, пробелов и пунктуации на синтетическом ответе LLM.
+- [x] E9.3 Исправить только выявленный регрессией gap, не вводя второй state machine.
 
 ### Acceptance
 
