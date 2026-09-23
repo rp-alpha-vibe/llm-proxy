@@ -1,3 +1,6 @@
+# Mixed Cyrillic free-text fixtures; RUF001/RUF003 suppressed for lookalike letters.
+# ruff: noqa: RUF001
+
 import time
 from collections.abc import Sequence
 
@@ -7,7 +10,7 @@ from llm_proxy.application.process_service import ProcessService
 from llm_proxy.application.stubs import SimplePlaceholderMaskStrategy
 from llm_proxy.detection.contextual import register_contextual_detectors
 from llm_proxy.detection.engine import PiiEngine
-from llm_proxy.detection.models import PiiType
+from llm_proxy.detection.models import MANDATORY_PII_TYPES, PiiType
 from llm_proxy.detection.registry import DetectorRegistry
 from llm_proxy.policies.models import ConsumerContext, ConsumerPolicy
 from llm_proxy.state.models import SessionRecord, StateStore
@@ -129,14 +132,14 @@ def test_address_components_and_organization_negative() -> None:
         (PiiType.ADDRESS_DISTRICT, "Ленинский район"),
         (PiiType.ADDRESS_CITY, "\u0433. Казань"),
         (PiiType.ADDRESS_STREET, "ул. Баумана"),
-        (PiiType.ADDRESS_BUILDING, "д. 10"),
-        (PiiType.ADDRESS_UNIT, "кв. 5"),
+        (PiiType.ADDRESS_BUILDING, "10"),
+        (PiiType.ADDRESS_UNIT, "5"),
     ]
     assert _found("АДРЕС ПРОЖИВАНИЯ: \u0433. Самара, улица Ленина, дом 4, квартира 2.") == [
         (PiiType.ADDRESS_CITY, "\u0433. Самара"),
         (PiiType.ADDRESS_STREET, "улица Ленина"),
-        (PiiType.ADDRESS_BUILDING, "дом 4"),
-        (PiiType.ADDRESS_UNIT, "квартира 2"),
+        (PiiType.ADDRESS_BUILDING, "4"),
+        (PiiType.ADDRESS_UNIT, "2"),
     ]
     assert _found("адрес отделения банка: \u0433. Москва, ул. Тверская, д. 1") == []
     assert _found("\u0433. Москва, ул. Тверская, д. 1") == []
@@ -179,8 +182,8 @@ def test_delivery_contacts_confirm_person_and_address_components() -> None:
         (PiiType.ADDRESS_POSTAL_CODE, "990010"),
         (PiiType.ADDRESS_CITY, "Демонстрационск"),
         (PiiType.ADDRESS_STREET, "улица Макетная"),
-        (PiiType.ADDRESS_BUILDING, "д. 10"),
-        (PiiType.ADDRESS_UNIT, "кв. 20"),
+        (PiiType.ADDRESS_BUILDING, "10"),
+        (PiiType.ADDRESS_UNIT, "20"),
     ]
 
 
@@ -203,7 +206,7 @@ async def test_delivery_contacts_mask_and_exact_unmask() -> None:
     expected = (
         "Оставляю контакты для доставки макета: <PERSON_1>, <PHONE_2>. "
         "Адрес: <ADDRESS_COUNTRY_3>, <ADDRESS_POSTAL_CODE_4>, <ADDRESS_CITY_5>, "
-        "<ADDRESS_STREET_6>, <ADDRESS_HOUSE_7>, <ADDRESS_APARTMENT_8>. "
+        "<ADDRESS_STREET_6>, д. <ADDRESS_HOUSE_7>, кв. <ADDRESS_APARTMENT_8>. "
         "Лучше звонить после обеда."
     )
     service = ProcessService(
@@ -215,7 +218,7 @@ async def test_delivery_contacts_mask_and_exact_unmask() -> None:
         policy_id="policy-alfa_tester",
         system_id="alfa_tester",
         enabled=True,
-        pii_types="all",
+        pii_types=MANDATORY_PII_TYPES,
         allow_demask=True,
         mask_strategy="competition",
     )
@@ -283,3 +286,344 @@ def test_contextual_patterns_stay_bounded() -> None:
     for sample in samples:
         engine.detect(sample, _TYPES)
     assert time.perf_counter() - started < 2.0
+
+
+_FREE_TEXT_EXAMPLE = (
+    "Служба доставки просила уточнить индекс и телефон. Индекс 990020, адрес: "
+    "Демонстрационск, Учебная, дом 20, квартира 30; контактный номер +7 000 555-00-20. "
+    "Получатель Новиков Алексей Примеровна"
+)
+
+
+def _full_engine() -> PiiEngine:
+    from llm_proxy.detection.structured import register_structured_detectors
+
+    registry = DetectorRegistry()
+    register_structured_detectors(registry)
+    register_contextual_detectors(registry)
+    return PiiEngine(registry)
+
+
+def _full_found(text: str) -> list[tuple[PiiType, str]]:
+    return [
+        (item.type, text[item.start : item.end])
+        for item in _full_engine().detect(text, MANDATORY_PII_TYPES)
+    ]
+
+
+def test_free_text_delivery_example_detections() -> None:
+    assert _full_found(_FREE_TEXT_EXAMPLE) == [
+        (PiiType.ADDRESS_POSTAL_CODE, "990020"),
+        (PiiType.ADDRESS_CITY, "Демонстрационск"),
+        (PiiType.ADDRESS_STREET, "Учебная"),
+        (PiiType.ADDRESS_BUILDING, "20"),
+        (PiiType.ADDRESS_UNIT, "30"),
+        (PiiType.PHONE, "+7 000 555-00-20"),
+        (PiiType.PERSON, "Новиков Алексей Примеровна"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_free_text_delivery_example_mask_and_exact_unmask() -> None:
+    from llm_proxy.main import _build_detector
+    from llm_proxy.masking.competition import CompetitionMaskStrategy
+
+    expected = (
+        "Служба доставки просила уточнить индекс и телефон. Индекс <ADDRESS_POSTAL_CODE_1>, "
+        "адрес: <ADDRESS_CITY_2>, <ADDRESS_STREET_3>, дом <ADDRESS_HOUSE_4>, "
+        "квартира <ADDRESS_APARTMENT_5>; контактный номер <PHONE_6>. Получатель <PERSON_7>"
+    )
+    service = ProcessService(
+        state_store=MemoryStateStore(),
+        detector=_build_detector(),
+        mask_strategy=CompetitionMaskStrategy(),
+    )
+    policy = ConsumerPolicy(
+        policy_id="policy-alfa_tester",
+        system_id="alfa_tester",
+        enabled=True,
+        pii_types=MANDATORY_PII_TYPES,
+        allow_demask=True,
+        mask_strategy="competition",
+    )
+    context = ConsumerContext(consumer_id="alfa_tester", policy=policy)
+
+    masked = await service.process(context, "payload-free-text", _FREE_TEXT_EXAMPLE)
+    restored = await service.process(context, "payload-free-text", masked.result)
+
+    assert masked.result == expected
+    assert restored.result == _FREE_TEXT_EXAMPLE
+
+
+def test_free_text_address_variants() -> None:
+    # Bare city/street without city/street prefixes; index after address.
+    assert _found(
+        "Доставьте заказ по адресу: Примерск, Центральная, дом 10, квартира 5. Индекс 123456."
+    ) == [
+        (PiiType.ADDRESS_CITY, "Примерск"),
+        (PiiType.ADDRESS_STREET, "Центральная"),
+        (PiiType.ADDRESS_BUILDING, "10"),
+        (PiiType.ADDRESS_UNIT, "5"),
+        (PiiType.ADDRESS_POSTAL_CODE, "123456"),
+    ]
+    # Index before address.
+    assert _found("Для доставки индекс 654321, адрес: Озёрск, Набережная, дом 3, квартира 8.") == [
+        (PiiType.ADDRESS_POSTAL_CODE, "654321"),
+        (PiiType.ADDRESS_CITY, "Озёрск"),
+        (PiiType.ADDRESS_STREET, "Набережная"),
+        (PiiType.ADDRESS_BUILDING, "3"),
+        (PiiType.ADDRESS_UNIT, "8"),
+    ]
+    # Reordered components: house/unit before bare city/street.
+    assert _found("Курьерская доставка, адрес: дом 7, кв. 12, Зеленоградск, Парковая.") == [
+        (PiiType.ADDRESS_BUILDING, "7"),
+        (PiiType.ADDRESS_UNIT, "12"),
+        (PiiType.ADDRESS_CITY, "Зеленоградск"),
+        (PiiType.ADDRESS_STREET, "Парковая"),
+    ]
+
+
+def test_free_text_multiword_city_and_street() -> None:
+    assert _found("Адрес доставки: Москва, Большая Никитская, дом 10, квартира 2.") == [
+        (PiiType.ADDRESS_CITY, "Москва"),
+        (PiiType.ADDRESS_STREET, "Большая Никитская"),
+        (PiiType.ADDRESS_BUILDING, "10"),
+        (PiiType.ADDRESS_UNIT, "2"),
+    ]
+    assert _found("Адрес доставки: Нижний Новгород, Большая Покровская, дом 8, квартира 4.") == [
+        (PiiType.ADDRESS_CITY, "Нижний Новгород"),
+        (PiiType.ADDRESS_STREET, "Большая Покровская"),
+        (PiiType.ADDRESS_BUILDING, "8"),
+        (PiiType.ADDRESS_UNIT, "4"),
+    ]
+    assert _found(
+        "адрес проживания: \u0433. Нижний Новгород, ул. Большая Никитская, дом 1, квартира 2."
+    ) == [
+        (PiiType.ADDRESS_CITY, "\u0433. Нижний Новгород"),
+        (PiiType.ADDRESS_STREET, "ул. Большая Никитская"),
+        (PiiType.ADDRESS_BUILDING, "1"),
+        (PiiType.ADDRESS_UNIT, "2"),
+    ]
+    # No commas between labeled multi-word city and street.
+    assert _found(
+        "адрес проживания: город Нижний Новгород улица Большая Никитская дом 3 квартира 4."
+    ) == [
+        (PiiType.ADDRESS_CITY, "город Нижний Новгород"),
+        (PiiType.ADDRESS_STREET, "улица Большая Никитская"),
+        (PiiType.ADDRESS_BUILDING, "3"),
+        (PiiType.ADDRESS_UNIT, "4"),
+    ]
+
+
+def test_free_text_address_stops_at_sentence_boundary() -> None:
+    found = _found("Адрес доставки: дом 10, квартира 5. Получатель Иван Иванов.")
+    assert (PiiType.ADDRESS_BUILDING, "10") in found
+    assert (PiiType.ADDRESS_UNIT, "5") in found
+    assert (PiiType.ADDRESS_CITY, "Иван") not in found
+    assert (PiiType.ADDRESS_STREET, "Иванов") not in found
+    assert (PiiType.ADDRESS_CITY, "Получатель") not in found
+    # Recipient with delivery context still finds the person.
+    assert (PiiType.PERSON, "Иван Иванов") in found
+
+
+def test_free_text_person_recipient_variants() -> None:
+    assert _found("Для доставки. Получатель Сидоров Пётр Иванович") == [
+        (PiiType.PERSON, "Сидоров Пётр Иванович")
+    ]
+    assert _found("получатель: Козлова Мария") == [(PiiType.PERSON, "Козлова Мария")]
+    assert _found("Получатель заказа Белова Анна Сергеевна") == [
+        (PiiType.PERSON, "Белова Анна Сергеевна")
+    ]
+    assert _found("Контактное лицо Орлов Дмитрий") == [(PiiType.PERSON, "Орлов Дмитрий")]
+    # Non-standard gender combination of name parts must still be detected.
+    assert _found("Курьерская доставка, получатель Новикова Алексей Примеровна") == [
+        (PiiType.PERSON, "Новикова Алексей Примеровна")
+    ]
+    # Получатель immediately before a name acts as a label (no delivery required).
+    assert _found("Получатель Сидоров Пётр Иванович") == [(PiiType.PERSON, "Сидоров Пётр Иванович")]
+
+
+def test_free_text_recipient_award_is_not_person_context() -> None:
+    assert _found("Получатель премии Александр Пушкин выступил на сцене.") == []
+    assert _found("Получатель награды Мария Тестова получила диплом.") == []
+    assert _found("Получатель ордена Пётр Примерский присутствовал на церемонии.") == []
+    assert (
+        _found(
+            "Доставка книг обсуждалась отдельно. "
+            "Получатель гранта Александр Пушкин выступил на сцене."
+        )
+        == []
+    )
+    assert _found("Получатель Нобелевской премии Александр Пушкин выступил на сцене.") == []
+    assert _full_found("Сегодня обсуждали роман Александра Пушкина.") == []
+
+
+def test_free_text_phone_context_phrases() -> None:
+    assert _full_found("контактный номер +7 900 111-22-33") == [(PiiType.PHONE, "+7 900 111-22-33")]
+    assert _full_found("номер телефона 8 (900) 222-33-44 для связи") == [
+        (PiiType.PHONE, "8 (900) 222-33-44")
+    ]
+    assert _full_found("телефон для связи +7-900-333-44-55") == [
+        (PiiType.PHONE, "+7-900-333-44-55")
+    ]
+    assert _full_found("позвонить по номеру +7 900 444 55 66") == [
+        (PiiType.PHONE, "+7 900 444 55 66")
+    ]
+
+
+def test_free_text_multiple_people_and_addresses() -> None:
+    text = (
+        "Первая доставка: адрес: Северск, Лесная, дом 1, квартира 2, получатель Иванов Иван. "
+        "Вторая доставка: адрес: Южск, Степная, дом 3, квартира 4, получатель Петрова Анна."
+    )
+    found = _found(text)
+    assert found.count((PiiType.ADDRESS_CITY, "Северск")) == 1
+    assert found.count((PiiType.ADDRESS_CITY, "Южск")) == 1
+    assert (PiiType.PERSON, "Иванов Иван") in found
+    assert (PiiType.PERSON, "Петрова Анна") in found
+    assert (PiiType.ADDRESS_BUILDING, "1") in found
+    assert (PiiType.ADDRESS_BUILDING, "3") in found
+
+
+def test_free_text_pii_inside_long_prose() -> None:
+    padding = "Фрагмент текста без ПДн. " * 40
+    text = (
+        f"{padding}Курьер спросил адрес доставки: Мирный, Школьная, дом 9, квартира 11. "
+        f"Индекс 111222. Получатель Смирнов Олег.{padding}"
+    )
+    found = _found(text)
+    assert (PiiType.ADDRESS_POSTAL_CODE, "111222") in found
+    assert (PiiType.ADDRESS_CITY, "Мирный") in found
+    assert (PiiType.ADDRESS_STREET, "Школьная") in found
+    assert (PiiType.ADDRESS_BUILDING, "9") in found
+    assert (PiiType.ADDRESS_UNIT, "11") in found
+    assert (PiiType.PERSON, "Смирнов Олег") in found
+
+
+def test_free_text_numbers_near_non_address_context() -> None:
+    text = (
+        "Склад № 42 принял паллету 990020. Для доставки адрес: Факел, Заводская, дом 15, "
+        "квартира 6. Индекс 424242. Код ячейки 15 не является домом."
+    )
+    found = _found(text)
+    assert (PiiType.ADDRESS_POSTAL_CODE, "424242") in found
+    assert (PiiType.ADDRESS_POSTAL_CODE, "990020") not in found
+    assert (PiiType.ADDRESS_BUILDING, "15") in found
+    assert found.count((PiiType.ADDRESS_BUILDING, "15")) == 1
+
+
+@pytest.mark.asyncio
+async def test_uppercase_address_and_recipient_mask_unmask() -> None:
+    from llm_proxy.main import _build_detector
+    from llm_proxy.masking.competition import CompetitionMaskStrategy
+
+    text = (
+        "Адрес доставки: Г. Нижний Новгород, УЛ. Большая Никитская, Д. 12, КВ. 7. "
+        "Получатель Сидоров Пётр Иванович"
+    )
+    expected = (
+        "Адрес доставки: <ADDRESS_CITY_1>, <ADDRESS_STREET_2>, Д. <ADDRESS_HOUSE_3>, "
+        "КВ. <ADDRESS_APARTMENT_4>. Получатель <PERSON_5>"
+    )
+    service = ProcessService(
+        state_store=MemoryStateStore(),
+        detector=_build_detector(),
+        mask_strategy=CompetitionMaskStrategy(),
+    )
+    policy = ConsumerPolicy(
+        policy_id="policy-alfa_tester",
+        system_id="alfa_tester",
+        enabled=True,
+        pii_types=MANDATORY_PII_TYPES,
+        allow_demask=True,
+        mask_strategy="competition",
+    )
+    context = ConsumerContext(consumer_id="alfa_tester", policy=policy)
+    masked = await service.process(context, "payload-upper-addr", text)
+    restored = await service.process(context, "payload-upper-addr", masked.result)
+    assert masked.result == expected
+    assert restored.result == text
+
+
+def test_free_text_negatives_avoid_overmasking() -> None:
+    assert _full_found("Служба доставки работает ежедневно.") == []
+    assert _full_found("Встреча состоится в центральном офисе банка.") == []
+    assert _full_found("Номер заказа 990020 передан на склад.") == []
+    assert _full_found("Сегодня обсуждали роман Александра Пушкина.") == []
+    assert _full_found("Доставка временно недоступна в некоторых городах.") == []
+
+
+def test_free_text_address_case_variants() -> None:
+    assert _found("Адрес доставки: Г. Нижний Новгород, УЛ. Большая Никитская, Д. 12, КВ. 7.") == [
+        (PiiType.ADDRESS_CITY, "Г. Нижний Новгород"),
+        (PiiType.ADDRESS_STREET, "УЛ. Большая Никитская"),
+        (PiiType.ADDRESS_BUILDING, "12"),
+        (PiiType.ADDRESS_UNIT, "7"),
+    ]
+    assert _found("Адрес доставки: ГОРОД МОСКВА УЛИЦА ЛЕНИНА ДОМ 12 КВАРТИРА 7.") == [
+        (PiiType.ADDRESS_CITY, "ГОРОД МОСКВА"),
+        (PiiType.ADDRESS_STREET, "УЛИЦА ЛЕНИНА"),
+        (PiiType.ADDRESS_BUILDING, "12"),
+        (PiiType.ADDRESS_UNIT, "7"),
+    ]
+    assert _found("адрес доставки: г. москва, ул. ленина, дом 12, квартира 7.") == [
+        (PiiType.ADDRESS_CITY, "г. москва"),
+        (PiiType.ADDRESS_STREET, "ул. ленина"),
+        (PiiType.ADDRESS_BUILDING, "12"),
+        (PiiType.ADDRESS_UNIT, "7"),
+    ]
+
+
+def test_free_text_street_and_building_variants() -> None:
+    assert _found("адрес проживания: проспект Мира, дом 1, квартира 2.") == [
+        (PiiType.ADDRESS_STREET, "проспект Мира"),
+        (PiiType.ADDRESS_BUILDING, "1"),
+        (PiiType.ADDRESS_UNIT, "2"),
+    ]
+    assert _found("адрес проживания: переулок Сивцев Вражек, дом 3.") == [
+        (PiiType.ADDRESS_STREET, "переулок Сивцев Вражек"),
+        (PiiType.ADDRESS_BUILDING, "3"),
+    ]
+    assert _found(
+        "адрес проживания: бульвар Дмитрия Донского, корпус 3, строение 2, квартира 5."
+    ) == [
+        (PiiType.ADDRESS_STREET, "бульвар Дмитрия Донского"),
+        (PiiType.ADDRESS_BUILDING, "3"),
+        (PiiType.ADDRESS_BUILDING, "2"),
+        (PiiType.ADDRESS_UNIT, "5"),
+    ]
+
+
+def test_free_text_address_sentence_and_org_boundary() -> None:
+    found = _found("Адрес доставки: Москва, улица Ленина, дом 12. Номер заказа 990020.")
+    assert (PiiType.ADDRESS_CITY, "Москва") in found
+    assert (PiiType.ADDRESS_STREET, "улица Ленина") in found
+    assert (PiiType.ADDRESS_BUILDING, "12") in found
+    assert (PiiType.ADDRESS_POSTAL_CODE, "990020") not in found
+
+    found = _found("Адрес доставки: Москва, улица Ленина. Следующий дом 77 будет снесён.")
+    assert (PiiType.ADDRESS_CITY, "Москва") in found
+    assert (PiiType.ADDRESS_STREET, "улица Ленина") in found
+    assert (PiiType.ADDRESS_BUILDING, "77") not in found
+
+    found = _found("Адрес доставки: Москва, улица Ленина, дом 12, рядом с банком.")
+    assert (PiiType.ADDRESS_CITY, "Москва") in found
+    assert (PiiType.ADDRESS_STREET, "улица Ленина") in found
+    assert (PiiType.ADDRESS_BUILDING, "12") in found
+
+    assert _found("адрес отделения банка: город Москва, улица Тверская, дом 1") == []
+
+
+def test_free_text_person_role_stays_in_sentence() -> None:
+    assert _found("Получатель заказа неизвестен. Александр Пушкин выступил на сцене.") == []
+    assert _found("Клиент ушёл. Александр Пушкин выступил на сцене.") == []
+    assert _found("Заявитель не явился. Александр Пушкин упомянут в отчёте.") == []
+    assert _found("Контактное лицо не назначено. Александр Пушкин выступил на сцене.") == []
+    assert _found("Меня зовут неважно. Александр Пушкин — известный поэт.") == []
+    assert _found("Держатель карты не установлен. Александр Пушкин выступил на сцене.") == []
+    assert _found("Клиент выбрал автора Александр Пушкин для доклада.") == []
+    assert _found("Получатель: Сидоров Пётр Иванович") == [
+        (PiiType.PERSON, "Сидоров Пётр Иванович")
+    ]
+    assert _found("Меня зовут Иван Петров") == [(PiiType.PERSON, "Иван Петров")]
+    assert _found("держатель карты Иван Петров") == [(PiiType.CARDHOLDER, "Иван Петров")]

@@ -319,7 +319,7 @@ async def test_full_questionnaire_mask_unmask_and_llm_reply(index: int, text: st
         policy_id="policy-alfa_tester",
         system_id="alfa_tester",
         enabled=True,
-        pii_types="all",
+        pii_types=MANDATORY_PII_TYPES,
         allow_demask=True,
         mask_strategy="competition",
     )

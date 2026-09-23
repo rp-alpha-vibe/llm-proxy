@@ -3,7 +3,6 @@
 Profiles from TASK_IMPROVE_PII_DETECTION §7. Writes aggregate numbers only.
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -17,8 +16,12 @@ try:
     from scripts.bench_hot_path import build_engine, large_payload, pathological_cases
     from scripts.eval_labeled_sample import expected_fields
 except ModuleNotFoundError:  # pragma: no cover - direct script execution
-    from bench_hot_path import build_engine, large_payload, pathological_cases
-    from eval_labeled_sample import expected_fields
+    from bench_hot_path import (  # type: ignore[import-not-found,no-redef]
+        build_engine,
+        large_payload,
+        pathological_cases,
+    )
+    from eval_labeled_sample import expected_fields  # type: ignore[import-not-found,no-redef]
 
 
 def _percentile(values: list[float], pct: float) -> float:
