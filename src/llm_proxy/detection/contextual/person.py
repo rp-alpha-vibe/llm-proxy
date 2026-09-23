@@ -19,7 +19,10 @@ _NAME = re.compile(
     rf"|[{CYR_UPPER}]{{2,}}|[A-Z][a-z]{{1,}}|[A-Z]{{2,}})){{1,2}}"
     rf"(?![A-Za-z{CYR}])"
 )
-_PERSON = re.compile(r"фио|клиент|заявител|зовут", re.IGNORECASE)
+_PERSON = re.compile(
+    r"фио|клиент|заявител|зовут|получател(?:ь|я|ю|ем)?(?:\s+заказа)?",
+    re.IGNORECASE,
+)
 _CONTACT_PERSON = re.compile(r"контактное\s+лицо", re.IGNORECASE)
 _CONTACTS = re.compile(r"контакт(?:ы|ные\s+данные)", re.IGNORECASE)
 _CONTACT_DETAIL = re.compile(
@@ -28,6 +31,11 @@ _CONTACT_DETAIL = re.compile(
 )
 _CARDHOLDER = re.compile(
     r"держател|cardholder|владелец карты|имя на карте",
+    re.IGNORECASE,
+)
+_LEADING_ROLE = re.compile(
+    r"(?:получател(?:ь|я|ю|ем)?(?:\s+заказа)?|фио|клиент|заявител)"
+    r"(?:\s*[:\-—])?\s+",
     re.IGNORECASE,
 )
 
@@ -44,25 +52,47 @@ class PersonDetector:
         if ":" in text and ";" in text:
             lowered = text.casefold()
             form_only = (
-                "фио:" in lowered and "зовут" not in lowered and ("контактное лицо" not in lowered)
+                "фио:" in lowered
+                and "зовут" not in lowered
+                and "контактное лицо" not in lowered
+                and "получател" not in lowered
             )
             if form_only:
                 return ()
         field_aware = ";" in text
         found: list[Detection] = []
+        covered: list[tuple[int, int]] = []
         for match in _NAME.finditer(text):
-            if not _owned_by_person(text, match.start(), match.end(), field_aware=field_aware):
+            span = _person_name_span(text, match.start(), match.end())
+            if span is None:
                 continue
+            start, end = span
+            if any(start < seen_end and seen_start < end for seen_start, seen_end in covered):
+                continue
+            if not _owned_by_person(text, start, end, field_aware=field_aware):
+                continue
+            covered.append((start, end))
             found.append(
                 confirmed(
                     PiiType.PERSON,
-                    match.start(),
-                    match.end(),
+                    start,
+                    end,
                     "person",
                     confidence=0.85,
                 )
             )
         return tuple(found)
+
+
+def _person_name_span(text: str, start: int, end: int) -> tuple[int, int] | None:
+    """Drop leading role words (Получатель/ФИО) and rematch the real name."""
+    lead = _LEADING_ROLE.match(text, start)
+    if lead is not None and lead.end() <= end:
+        rematch = _NAME.match(text, lead.end())
+        if rematch is None:
+            return None
+        return rematch.start(), rematch.end()
+    return start, end
 
 
 class CardholderDetector:

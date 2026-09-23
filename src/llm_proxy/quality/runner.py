@@ -214,7 +214,12 @@ async def _round_trip(engine: PiiEngine, fixture: QualityFixture) -> bool:
     expected = fixture.resolved_spans()
     if not expected:
         return masked.result == fixture.input
-    return all(fixture.input[start:end] not in masked.result for _pii_type, start, end in expected)
+    # Short numeric fragments (house/unit) also appear inside placeholder indices;
+    # require only that longer values disappear from the masked text.
+    return all(
+        len(fixture.input[start:end]) <= 2 or fixture.input[start:end] not in masked.result
+        for _pii_type, start, end in expected
+    )
 
 
 def _mismatch_line(

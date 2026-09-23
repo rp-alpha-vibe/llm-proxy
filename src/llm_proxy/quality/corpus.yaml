@@ -178,8 +178,8 @@
     - {type: address_district, text: "Ленинский район"}
     - {type: address_city, text: "город Самара"}
     - {type: address_street, text: "улица Баумана"}
-    - {type: address_building, text: "дом 10"}
-    - {type: address_apartment, text: "квартира 5"}
+    - {type: address_house, text: "10"}
+    - {type: address_apartment, text: "5", occurrence: 2}
 
 - id: address-parent
   tags: [positive, basic, address]
@@ -226,8 +226,8 @@
     - {type: address_district, text: "Ленинский район"}
     - {type: address_city, text: "город Самара"}
     - {type: address_street, text: "улица Баумана"}
-    - {type: address_building, text: "дом 10"}
-    - {type: address_apartment, text: "квартира 5"}
+    - {type: address_house, text: "10", occurrence: 2}
+    - {type: address_apartment, text: "5", occurrence: 4}
     - {type: phone, text: "+7 (900) 123-45-67"}
     - {type: email, text: synthetic@example.test}
     - {type: inn, text: "500100732259"}
