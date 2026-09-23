@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>llm-proxy — Альфавайб</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --ink: #1c2430;
+      --accent: #0f6a5a;
+      --muted: #5b6570;
+      --card: #fffdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .deck { max-width: 960px; margin: 0 auto; padding: 24px; }
+    section {
+      background: var(--card);
+      border: 1px solid #d8d0c2;
+      border-radius: 12px;
+      padding: 40px 48px;
+      margin: 0 0 24px;
+      min-height: 520px;
+      page-break-after: always;
+    }
+    h1, h2 { margin: 0 0 16px; letter-spacing: -0.02em; }
+    h1 { font-size: 2.4rem; color: var(--accent); }
+    h2 { font-size: 1.8rem; }
+    p, li { font-size: 1.15rem; line-height: 1.45; color: var(--muted); }
+    ul { padding-left: 1.2rem; }
+    code, .mono {
+      font-family: Consolas, "Courier New", monospace;
+      color: var(--ink);
+    }
+    .tag {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.85rem;
+    }
+    .hero p { font-size: 1.35rem; max-width: 36rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid #e4ddd1;
+      font-size: 1.05rem;
+    }
+    th { color: var(--ink); }
+    @media print {
+      body { background: white; }
+      .deck { max-width: none; padding: 0; }
+      section {
+        border: none;
+        border-radius: 0;
+        min-height: 100vh;
+        margin: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <section class="hero">
+      <div class="tag">Альфавайб · Data Science</div>
+      <h1>llm-proxy</h1>
+      <p>HTTP-модуль защиты персональных данных между системой-потребителем и LLM: обнаружение, маскирование, обратимое восстановление.</p>
+      <p class="mono">POST /process → { "result": "..." }</p>
+    </section>
+
+    <section>
+      <div class="tag">Задача</div>
+      <h2>Что закрываем</h2>
+      <ul>
+        <li>Найти обязательные типы ПД без лишних false positives</li>
+        <li>Замаскировать их до LLM и восстановить в ответе</li>
+        <li>Держать политики по потребителям и сессии в Redis</li>
+        <li>Выдержать локальный нагрузочный профиль 1000 RPS</li>
+      </ul>
+    </section>
+
+    <section>
+      <div class="tag">Архитектура</div>
+      <h2>Минимальный runtime</h2>
+      <ul>
+        <li>FastAPI + Uvicorn workers</li>
+        <li>Redis 7 для AES-GCM session state</li>
+        <li>Consumer из <span class="mono">LLM_PROXY_DEFAULT_CONSUMER_ID</span> + YAML policies</li>
+        <li>Без обязательного auth header в теле запроса тестера</li>
+      </ul>
+      <p>Один deploy: app + private Redis. Собственный TLS не обязателен: tester допускает HTTP.</p>
+    </section>
+
+    <section>
+      <div class="tag">Контракт</div>
+      <h2>Единственный публичный API</h2>
+      <p class="mono">POST /process</p>
+      <p>Request: <span class="mono">{"payload": "...", "payload_id": "..."}</span></p>
+      <p>Response: <span class="mono">{"result": "..."}</span></p>
+      <ul>
+        <li>Новый текст → mask</li>
+        <li>Повтор исходного → та же mask (retry)</li>
+        <li>Точная mask → original</li>
+        <li>Перегрузка → 429 + Retry-After</li>
+      </ul>
+    </section>
+
+    <section>
+      <div class="tag">Качество и безопасность</div>
+      <h2>Локальные доказательства</h2>
+      <ul>
+        <li>46 синтетических fixtures: локальный F1 1.0, round-trip 1.0</li>
+        <li>Не официальный span-based scoring Альфы</li>
+        <li>Сессии шифруются AES-GCM; ключ только из окружения</li>
+        <li>Сырые ПД не пишутся в логи и metric labels</li>
+      </ul>
+    </section>
+
+    <section>
+      <div class="tag">Нагрузка</div>
+      <h2>Локальный baseline §7.1</h2>
+      <table>
+        <tr><th>Показатель</th><th>Значение</th></tr>
+        <tr><td>Успешные операции / 300 с</td><td>300001</td></tr>
+        <tr><td>p95 latency</td><td>21.78 мс</td></tr>
+        <tr><td>Ошибки / 429</td><td>0 / 0</td></tr>
+        <tr><td>Workers</td><td>8</td></tr>
+      </table>
+      <p>Это локальный прогон команды, не официальный scoring и не 2000 RPS.</p>
+    </section>
+
+    <section>
+      <div class="tag">Сдача</div>
+      <h2>Как запустить</h2>
+      <ol>
+        <li>Скопировать <span class="mono">.env.example</span> → <span class="mono">.env</span>, задать ключ шифрования</li>
+        <li>Оставить consumer <span class="mono">alfa_tester</span> (ключ секции <span class="mono">systems</span>)</li>
+        <li><span class="mono">docker compose up --build -d</span></li>
+        <li>Проверить <span class="mono">/healthz</span> и <span class="mono">POST /process</span></li>
+      </ol>
+      <p>Source ZIP собирается <span class="mono">python scripts/package.py</span> и не содержит docs/tests/.agents.</p>
+    </section>
+  </div>
+</body>
+</html>
