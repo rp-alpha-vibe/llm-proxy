@@ -11,6 +11,7 @@ from llm_proxy.detection.engine import PiiEngine
 from llm_proxy.detection.models import MANDATORY_PII_TYPES, PiiType
 from llm_proxy.detection.registry import DetectorRegistry
 from llm_proxy.detection.structured import register_structured_detectors
+from llm_proxy.masking.base import MaskContext
 from llm_proxy.masking.placeholder import PlaceholderMaskStrategy
 from llm_proxy.policies.models import ConsumerContext, ConsumerPolicy
 from llm_proxy.quality.gate import MAX_NEGATIVE_DETECTIONS, MIN_F1, MIN_ROUND_TRIP_RATE
@@ -214,11 +215,24 @@ async def _round_trip(engine: PiiEngine, fixture: QualityFixture) -> bool:
     expected = fixture.resolved_spans()
     if not expected:
         return masked.result == fixture.input
-    # Short numeric fragments (house/unit) also appear inside placeholder indices;
-    # require only that longer values disappear from the masked text.
+    # Entity/offset check: short house/unit digits must be covered by a real replacement,
+    # not by a substring search that collides with placeholder indices or other numbers.
+    detections = tuple(engine.detect(fixture.input, fixture.enabled_types))
+    direct = PlaceholderMaskStrategy().mask(
+        fixture.input,
+        detections,
+        MaskContext(policy_id="policy-quality", mask_strategy="placeholder"),
+    )
+    covered = {
+        (entity.type, entity.original_start, entity.original_end) for entity in direct.entities
+    }
+    expected_set = set(expected)
+    if not expected_set <= covered:
+        return False
     return all(
-        len(fixture.input[start:end]) <= 2 or fixture.input[start:end] not in masked.result
-        for _pii_type, start, end in expected
+        fixture.input[entity.original_start : entity.original_end] != entity.rendered_mask
+        for entity in direct.entities
+        if (entity.type, entity.original_start, entity.original_end) in expected_set
     )
 
 

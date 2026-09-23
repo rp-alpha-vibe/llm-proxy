@@ -19,10 +19,16 @@ _NAME = re.compile(
     rf"|[{CYR_UPPER}]{{2,}}|[A-Z][a-z]{{1,}}|[A-Z]{{2,}})){{1,2}}"
     rf"(?![A-Za-z{CYR}])"
 )
-_PERSON = re.compile(
-    r"фио|клиент|заявител|зовут|получател(?:ь|я|ю|ем)?(?:\s+заказа)?",
+_PERSON = re.compile(r"фио|клиент|заявител|зовут", re.IGNORECASE)
+_RECIPIENT_STRONG = re.compile(
+    r"получател(?:ь|я|ю|ем)?\s*(?::|\s+заказа\b)",
     re.IGNORECASE,
 )
+_RECIPIENT_BARE = re.compile(
+    r"получател(?:ь|я|ю|ем)?(?!\s+(?:премии|награды|ордена)\b)",
+    re.IGNORECASE,
+)
+_DELIVERY = re.compile(r"достав", re.IGNORECASE)
 _CONTACT_PERSON = re.compile(r"контактное\s+лицо", re.IGNORECASE)
 _CONTACTS = re.compile(r"контакт(?:ы|ные\s+данные)", re.IGNORECASE)
 _CONTACT_DETAIL = re.compile(
@@ -140,12 +146,33 @@ def _field_slice(text: str, start: int, end: int, *, field_aware: bool) -> tuple
     return text[field_start:field_end], start - field_start, end - field_start
 
 
+def _recipient_distance(text: str, start: int, end: int) -> int | None:
+    """Confirm recipient labels; bare 'Получатель' needs delivery context."""
+    strong = label_distance(text, start, end, _RECIPIENT_STRONG)
+    if strong is not None:
+        return strong
+    bare = label_distance(text, start, end, _RECIPIENT_BARE)
+    if bare is None:
+        return None
+    left = max(0, start - 160)
+    right = min(len(text), end + 48)
+    if _DELIVERY.search(text, left, right) is not None:
+        return bare
+    if len(text) <= 400 and _DELIVERY.search(text) is not None:
+        return bare
+    return None
+
+
 def _owned_by_person(text: str, start: int, end: int, *, field_aware: bool) -> bool:
     slice_text, local_start, local_end = _field_slice(text, start, end, field_aware=field_aware)
     person = label_distance(slice_text, local_start, local_end, _PERSON)
     contact_person = label_distance(slice_text, local_start, local_end, _CONTACT_PERSON)
     if person is None or (contact_person is not None and contact_person < person):
         person = contact_person
+    # Delivery cues often sit in a previous `;`-field; check recipient on full text.
+    recipient = _recipient_distance(text, start, end)
+    if person is None or (recipient is not None and recipient < person):
+        person = recipient
     if person is None:
         contacts = label_distance(slice_text, local_start, local_end, _CONTACTS)
         detail_start = max(0, local_start - 48)
@@ -163,4 +190,9 @@ def _owned_by_cardholder(text: str, start: int, end: int, *, field_aware: bool) 
     if cardholder is None:
         return False
     person = label_distance(slice_text, local_start, local_end, _PERSON)
+    recipient = _recipient_distance(text, start, end)
+    if person is None:
+        person = recipient
+    elif recipient is not None:
+        person = min(person, recipient)
     return person is None or cardholder < person

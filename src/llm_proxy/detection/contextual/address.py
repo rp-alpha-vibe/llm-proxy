@@ -34,8 +34,15 @@ _HOUSE_OR_UNIT = re.compile(
     rf"(?<![{CYR}])(?:\u0434\.|дом|кв\.|квартира)\b",
     re.IGNORECASE,
 )
-_BARE_TOKEN = re.compile(
-    rf"(?<![A-Za-z{CYR}0-9])([{CYR_UPPER}][{CYR_LOWER}-]+)(?![A-Za-z{CYR}0-9])"
+_SENTENCE_STOP = re.compile(rf"\.(?=\s+[{CYR_UPPER}A-Z]|\s*$)|;")
+_BARE_LABEL_STOP = re.compile(
+    rf"(?<![A-Za-z{CYR}])(?:индекс|получател|телефон|контактн|email|e-mail|фио)\b",
+    re.IGNORECASE,
+)
+_BARE_SEGMENT = re.compile(rf"[{CYR_UPPER}][{CYR_LOWER}-]+(?:[ \t]+[{CYR_UPPER}][{CYR_LOWER}-]+)*")
+_SKIP_SEGMENT = re.compile(
+    r"^(?:\u0434\.|дом|кв\.|квартира|индекс)\b",
+    re.IGNORECASE,
 )
 _SKIP_BARE = frozenset(
     {
@@ -133,6 +140,8 @@ class AddressDetector:
 
         for anchor in sorted(anchors, key=lambda item: item.start()):
             clause_start = anchor.end()
+            while clause_start < len(text) and text[clause_start] in " \t:—-":
+                clause_start += 1
             clause_end = min(len(text), clause_start + _CLAUSE_LIMIT)
             clause = text[clause_start:clause_end]
             if _ORG.search(clause):
@@ -214,19 +223,36 @@ def _extend_bare_city_street(
     if has_city and has_street:
         return
 
+    region_end = _bare_region_end(clause)
+    region = clause[:region_end]
     candidates: list[tuple[int, int]] = []
-    for match in _BARE_TOKEN.finditer(clause):
-        token = match.group(1)
-        if token.casefold() in _SKIP_BARE:
+    cursor = 0
+    while cursor < len(region):
+        next_comma = region.find(",", cursor)
+        seg_end = len(region) if next_comma < 0 else next_comma
+        raw = region[cursor:seg_end]
+        local_start = 0
+        while local_start < len(raw) and raw[local_start] in " \t":
+            local_start += 1
+        local_end = len(raw)
+        while local_end > local_start and raw[local_end - 1] in " \t":
+            local_end -= 1
+        segment = raw[local_start:local_end]
+        abs_start = offset + cursor + local_start
+        abs_end = offset + cursor + local_end
+        cursor = seg_end + 1 if next_comma >= 0 else len(region)
+        if not segment or _HOUSE_OR_UNIT.match(segment) is not None:
             continue
-        start, end = offset + match.start(1), offset + match.end(1)
-        if _span_overlaps(start, end, found):
+        if _SKIP_SEGMENT.match(segment) is not None:
             continue
-        left = clause[max(0, match.start(1) - 2) : match.start(1)]
-        right = clause[match.end(1) : match.end(1) + 2]
-        if left and left[-1] not in " \t," and right and right[0] not in " \t,.":
+        if _BARE_SEGMENT.fullmatch(segment) is None:
             continue
-        candidates.append((start, end))
+        if _span_overlaps(abs_start, abs_end, found):
+            continue
+        first = segment.split(None, 1)[0].casefold()
+        if first in _SKIP_BARE:
+            continue
+        candidates.append((abs_start, abs_end))
 
     if not has_city and candidates:
         start, end = candidates.pop(0)
@@ -234,3 +260,13 @@ def _extend_bare_city_street(
     if not has_street and candidates:
         start, end = candidates.pop(0)
         found.append((PiiType.ADDRESS_STREET, start, end))
+
+
+def _bare_region_end(clause: str) -> int:
+    """Stop bare city/street search at sentence end or the next field label."""
+    candidates = [len(clause)]
+    for match in _SENTENCE_STOP.finditer(clause):
+        candidates.append(match.start())
+    for match in _BARE_LABEL_STOP.finditer(clause):
+        candidates.append(match.start())
+    return min(candidates)

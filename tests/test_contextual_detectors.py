@@ -380,17 +380,54 @@ def test_free_text_address_variants() -> None:
     ]
 
 
+def test_free_text_multiword_city_and_street() -> None:
+    assert _found("Адрес доставки: Москва, Большая Никитская, дом 10, квартира 2.") == [
+        (PiiType.ADDRESS_CITY, "Москва"),
+        (PiiType.ADDRESS_STREET, "Большая Никитская"),
+        (PiiType.ADDRESS_BUILDING, "10"),
+        (PiiType.ADDRESS_UNIT, "2"),
+    ]
+    assert _found("Адрес доставки: Нижний Новгород, Большая Покровская, дом 8, квартира 4.") == [
+        (PiiType.ADDRESS_CITY, "Нижний Новгород"),
+        (PiiType.ADDRESS_STREET, "Большая Покровская"),
+        (PiiType.ADDRESS_BUILDING, "8"),
+        (PiiType.ADDRESS_UNIT, "4"),
+    ]
+
+
+def test_free_text_address_stops_at_sentence_boundary() -> None:
+    found = _found("Адрес доставки: дом 10, квартира 5. Получатель Иван Иванов.")
+    assert (PiiType.ADDRESS_BUILDING, "10") in found
+    assert (PiiType.ADDRESS_UNIT, "5") in found
+    assert (PiiType.ADDRESS_CITY, "Иван") not in found
+    assert (PiiType.ADDRESS_STREET, "Иванов") not in found
+    assert (PiiType.ADDRESS_CITY, "Получатель") not in found
+    # Recipient with delivery context still finds the person.
+    assert (PiiType.PERSON, "Иван Иванов") in found
+
+
 def test_free_text_person_recipient_variants() -> None:
-    assert _found("Получатель Сидоров Пётр Иванович") == [(PiiType.PERSON, "Сидоров Пётр Иванович")]
+    assert _found("Для доставки. Получатель Сидоров Пётр Иванович") == [
+        (PiiType.PERSON, "Сидоров Пётр Иванович")
+    ]
     assert _found("получатель: Козлова Мария") == [(PiiType.PERSON, "Козлова Мария")]
     assert _found("Получатель заказа Белова Анна Сергеевна") == [
         (PiiType.PERSON, "Белова Анна Сергеевна")
     ]
     assert _found("Контактное лицо Орлов Дмитрий") == [(PiiType.PERSON, "Орлов Дмитрий")]
     # Non-standard gender combination of name parts must still be detected.
-    assert _found("Получатель Новикова Алексей Примеровна") == [
+    assert _found("Курьерская доставка, получатель Новикова Алексей Примеровна") == [
         (PiiType.PERSON, "Новикова Алексей Примеровна")
     ]
+    # Bare recipient without delivery/order/colon is not enough.
+    assert _found("Получатель Сидоров Пётр Иванович") == []
+
+
+def test_free_text_recipient_award_is_not_person_context() -> None:
+    assert _found("Получатель премии Александр Пушкин выступил на сцене.") == []
+    assert _found("Получатель награды Мария Тестова получила диплом.") == []
+    assert _found("Получатель ордена Пётр Примерский присутствовал на церемонии.") == []
+    assert _full_found("Сегодня обсуждали роман Александра Пушкина.") == []
 
 
 def test_free_text_phone_context_phrases() -> None:
