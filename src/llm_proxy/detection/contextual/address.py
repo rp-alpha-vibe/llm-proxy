@@ -1,3 +1,6 @@
+# Cyrillic address markers; RUF001/RUF003 suppressed for marker literals.
+# ruff: noqa: RUF001
+
 import re
 from collections.abc import Collection, Sequence
 
@@ -5,7 +8,6 @@ from llm_proxy.detection.contextual.common import (
     CYR,
     CYR_LOWER,
     CYR_UPPER,
-    G_DOT,
     confirmed,
     trim_span,
 )
@@ -21,7 +23,12 @@ _GENERIC_ADDRESS = re.compile(
     re.IGNORECASE,
 )
 _DELIVERY = re.compile(r"достав|получател", re.IGNORECASE)
-_ORG = re.compile(r"банк|отделен|филиал|офис", re.IGNORECASE)
+# Organizational address is decided by the anchor phrase, not by later words like «банком».
+_ORG_ANCHOR = re.compile(
+    r"адрес\s+(?:банка|отделения|офиса|филиала)|"
+    r"адрес\s+отделения\s+банка",
+    re.IGNORECASE,
+)
 _LABELED_COMPONENT = re.compile(
     r"(?:страна|индекс|город|улица|дом|квартира)\s*:",
     re.IGNORECASE,
@@ -30,27 +37,48 @@ _INDEX_LABELED = re.compile(
     rf"(?<![A-Za-z{CYR}])индекс\s*[:\s]\s*(?P<code>\d{{6}})(?!\d)",
     re.IGNORECASE,
 )
-_HOUSE_OR_UNIT = re.compile(
-    rf"(?<![{CYR}])(?:\u0434\.|дом|кв\.|квартира)\b",
-    re.IGNORECASE,
+# Markers: case-insensitive via (?i:...), values stay case-flexible without IGNORECASE.
+_CITY_MARK = r"(?i:г\.|город)"
+_STREET_MARK = r"(?i:ул\.|улица|пр-т|проспект|пер\.|переулок|бул\.|бульвар|шоссе)"
+_HOUSE_MARK = r"(?i:д\.|дом|корп\.|корпус|стр\.|строение)"
+_UNIT_MARK = r"(?i:кв\.|квартира)"
+_MARKER_TOKEN = (
+    r"(?i:г|город|ул|улица|пр-т|проспект|пер|переулок|бул|бульвар|шоссе|"
+    r"д|дом|корп|корпус|стр|строение|кв|квартира|индекс)"
 )
-_ABBREV_DOT = frozenset({"\u0433", "\u0443\u043b", "\u0434", "\u043a\u0432"})
+_HOUSE_OR_UNIT = re.compile(
+    rf"(?<![{CYR}])(?:{_HOUSE_MARK}|{_UNIT_MARK})\b",
+)
+_ABBREV_DOT = frozenset(
+    {
+        "\u0433",
+        "\u0443\u043b",
+        "\u0434",
+        "\u043a\u0432",
+        "\u043f\u0440",
+        "\u043f\u0435\u0440",
+        "\u0431\u0443\u043b",
+        "\u043a\u043e\u0440\u043f",
+        "\u0441\u0442\u0440",
+    }
+)
 _BARE_LABEL_STOP = re.compile(
     rf"(?<![A-Za-z{CYR}])(?:индекс|получател|телефон|контактн|email|e-mail|фио)\b",
     re.IGNORECASE,
 )
-_NAME_WORD = rf"[{CYR_UPPER}][{CYR_LOWER}-]+"
+# Title / UPPER / lower values; never consume the next component marker as a name word.
+_NAME_WORD = rf"(?!{_MARKER_TOKEN}\b)[{CYR}]{{2,}}(?:-[{CYR}]+)*"
 _BARE_NAME = rf"{_NAME_WORD}(?:[ \t]+{_NAME_WORD})*"
-# Stop multi-word city/street before the next address component (no commas required).
-# Do not use IGNORECASE on these patterns: it would let "улица" match as a name word.
 _VALUE_STOP = (
     r"(?=,|;|\.|$|"
-    rf"\s+(?:ул\.|[\u0423\u0443]лица|\u0434\.|[Дд]ом|кв\.|[Кк]вартира|[Ии]ндекс|[Гг]ород|{G_DOT}))"
+    rf"\s+(?:{_STREET_MARK}|{_HOUSE_MARK}|{_UNIT_MARK}|(?i:индекс)|{_CITY_MARK}))"
 )
-_BARE_SEGMENT = re.compile(_BARE_NAME)
+_BARE_SEGMENT = re.compile(
+    rf"(?:[{CYR_UPPER}][{CYR_LOWER}-]+|[{CYR_UPPER}]{{2,}}|[{CYR_LOWER}]{{2,}})"
+    rf"(?:[ \t]+(?:[{CYR_UPPER}][{CYR_LOWER}-]+|[{CYR_UPPER}]{{2,}}|[{CYR_LOWER}]{{2,}}))*"
+)
 _SKIP_SEGMENT = re.compile(
-    r"^(?:\u0434\.|дом|кв\.|квартира|индекс)\b",
-    re.IGNORECASE,
+    rf"^(?:{_HOUSE_MARK}|{_UNIT_MARK}|(?i:индекс))\b",
 )
 _SKIP_BARE = frozenset(
     {
@@ -64,17 +92,21 @@ _SKIP_BARE = frozenset(
         "улица",
         "проспект",
         "переулок",
+        "бульвар",
+        "шоссе",
         "индекс",
         "адрес",
         "дом",
         "квартира",
+        "корпус",
+        "строение",
         "получатель",
         "доставка",
         "служба",
     }
 )
 _CLAUSE_LIMIT = 160
-_POSTAL_CITY = re.compile(rf"(?<!\d)\d{{6}}\s*,\s*(?P<city>[{CYR_UPPER}][{CYR_LOWER}-]+)(?=\s*,)")
+_POSTAL_CITY = re.compile(rf"(?<!\d)\d{{6}}\s*,\s*(?P<city>{_BARE_NAME})(?=\s*,)")
 _PARTS: tuple[tuple[PiiType, re.Pattern[str]], ...] = (
     (PiiType.ADDRESS_POSTAL_CODE, re.compile(r"(?<!\d)\d{6}(?!\d)")),
     (
@@ -97,26 +129,22 @@ _PARTS: tuple[tuple[PiiType, re.Pattern[str]], ...] = (
     ),
     (
         PiiType.ADDRESS_CITY,
-        re.compile(
-            rf"(?<![{CYR}])(?:{G_DOT}|[Гг]ород)\s*{_BARE_NAME}{_VALUE_STOP}",
-        ),
+        re.compile(rf"(?<![{CYR}]){_CITY_MARK}\s*{_BARE_NAME}{_VALUE_STOP}"),
     ),
     (
         PiiType.ADDRESS_STREET,
-        re.compile(
-            rf"(?<![{CYR}])(?:ул\.|[\u0423\u0443]лица)\s*{_BARE_NAME}{_VALUE_STOP}",
-        ),
+        re.compile(rf"(?<![{CYR}]){_STREET_MARK}\s*{_BARE_NAME}{_VALUE_STOP}"),
     ),
     (
         PiiType.ADDRESS_BUILDING,
         re.compile(
-            rf"(?<![{CYR}])(?:\u0434\.|[Дд]ом)\s*(?P<value>\d+[0-9A-Za-z{CYR}]?)",
+            rf"(?<![{CYR}]){_HOUSE_MARK}\s*(?P<value>\d+[0-9A-Za-z{CYR}]?)",
         ),
     ),
     (
         PiiType.ADDRESS_UNIT,
         re.compile(
-            rf"(?<![{CYR}])(?:кв\.|[Кк]вартира)\s*(?P<value>\d+)",
+            rf"(?<![{CYR}]){_UNIT_MARK}\s*(?P<value>\d+)",
         ),
     ),
 )
@@ -143,16 +171,20 @@ class AddressDetector:
                 anchors.append(anchor)
 
         for anchor in sorted(anchors, key=lambda item: item.start()):
+            if _ORG_ANCHOR.search(
+                text, max(0, anchor.start() - 8), min(len(text), anchor.end() + 48)
+            ):
+                continue
             clause_start = anchor.end()
             while clause_start < len(text) and text[clause_start] in " \t:—-":
                 clause_start += 1
             clause_end = min(len(text), clause_start + _CLAUSE_LIMIT)
+            clause_end = min(clause_end, _sentence_end(text, clause_start))
             clause = text[clause_start:clause_end]
-            if _ORG.search(clause):
-                continue
             parts = _components(clause, clause_start)
             _extend_labeled_postal(text, anchor.start(), clause_end, parts)
             _extend_bare_city_street(clause, clause_start, parts)
+            parts.sort(key=lambda item: (item[1], item[2], item[0].value))
             if want_components:
                 found.extend(
                     confirmed(pii_type, start, end, "address")
@@ -198,6 +230,7 @@ def _extend_labeled_postal(
     clause_end: int,
     found: list[tuple[PiiType, int, int]],
 ) -> None:
+    """Allow explicit «Индекс NNNNNN» in a neighboring sentence around the address."""
     window_start = max(0, anchor_start - _CLAUSE_LIMIT)
     window_end = min(len(text), clause_end + _CLAUSE_LIMIT)
     window = text[window_start:window_end]
@@ -219,12 +252,12 @@ def _extend_bare_city_street(
     has_house_or_unit = any(
         pii_type in {PiiType.ADDRESS_BUILDING, PiiType.ADDRESS_UNIT} for pii_type, _s, _e in found
     )
-    if not has_house_or_unit and _HOUSE_OR_UNIT.search(clause) is None:
-        return
-
     has_city = any(pii_type == PiiType.ADDRESS_CITY for pii_type, _s, _e in found)
     has_street = any(pii_type == PiiType.ADDRESS_STREET for pii_type, _s, _e in found)
     if has_city and has_street:
+        return
+    # Bare city is allowed when a marked street is already present (no house yet).
+    if not has_house_or_unit and not has_street and _HOUSE_OR_UNIT.search(clause) is None:
         return
 
     region_end = _bare_region_end(clause)
@@ -266,6 +299,16 @@ def _extend_bare_city_street(
         found.append((PiiType.ADDRESS_STREET, start, end))
 
 
+def _sentence_end(text: str, start: int) -> int:
+    """End of the sentence/field starting at start (abbreviation dots excluded)."""
+    limit = min(len(text), start + _CLAUSE_LIMIT)
+    region = text[start:limit]
+    for match in re.finditer(rf"\.(?=\s+[{CYR_UPPER}A-Z]|\s*$)|;", region):
+        if match.group(0) == ";" or not _is_abbreviation_dot(region, match.start()):
+            return start + match.start()
+    return limit
+
+
 def _bare_region_end(clause: str) -> int:
     """Stop bare city/street search at sentence end or the next field label."""
     candidates = [len(clause)]
@@ -280,7 +323,7 @@ def _bare_region_end(clause: str) -> int:
 def _is_abbreviation_dot(text: str, dot_pos: int) -> bool:
     """True for city/street/house abbreviations so dots are not sentence ends."""
     start = dot_pos
-    while start > 0 and dot_pos - start < 3:
+    while start > 0 and dot_pos - start < 4:
         ch = text[start - 1]
         if not (ch.isascii() and ch.isalpha()) and not ("\u0400" <= ch <= "\u04ff"):
             break

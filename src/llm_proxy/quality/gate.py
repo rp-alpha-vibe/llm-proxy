@@ -10,4 +10,4 @@ MAX_NEGATIVE_DETECTIONS = 0
 # First passing measurement, after correcting two handwritten occurrence indexes.
 # Observed local F1 was 1.0 for every covered type and round-trip was 1.0.
 # These observed values are not thresholds and are not official scoring.
-BASELINE_FIXTURE_COUNT = 46
+BASELINE_FIXTURE_COUNT = 56

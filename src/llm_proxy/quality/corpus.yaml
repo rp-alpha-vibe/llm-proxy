@@ -295,3 +295,76 @@
   tags: [negative, citizenship]
   input: "Гражданский кодекс"
   expected: []
+
+- id: free-text-address-uppercase-markers
+  tags: [positive, address, free_text]
+  input: "Адрес доставки: Г. Нижний Новгород, УЛ. Большая Никитская, Д. 12, КВ. 7."
+  expected:
+    - {type: address_city, text: "Г. Нижний Новгород"}
+    - {type: address_street, text: "УЛ. Большая Никитская"}
+    - {type: address_house, text: "12"}
+    - {type: address_apartment, text: "7"}
+
+- id: free-text-address-lowercase-values
+  tags: [positive, address, free_text]
+  input: "адрес доставки: г. москва, ул. ленина, дом 12, квартира 7."
+  expected:
+    - {type: address_city, text: "г. москва"}
+    - {type: address_street, text: "ул. ленина"}
+    - {type: address_house, text: "12"}
+    - {type: address_apartment, text: "7"}
+
+- id: free-text-address-allcaps
+  tags: [positive, address, free_text]
+  input: "Адрес доставки: ГОРОД МОСКВА УЛИЦА ЛЕНИНА ДОМ 12 КВАРТИРА 7."
+  expected:
+    - {type: address_city, text: "ГОРОД МОСКВА"}
+    - {type: address_street, text: "УЛИЦА ЛЕНИНА"}
+    - {type: address_house, text: "12"}
+    - {type: address_apartment, text: "7"}
+
+- id: free-text-prospect-and-korpus
+  tags: [positive, address, free_text]
+  input: "адрес проживания: бульвар Дмитрия Донского, корпус 3, строение 2, квартира 5."
+  expected:
+    - {type: address_street, text: "бульвар Дмитрия Донского"}
+    - {type: address_house, text: "3"}
+    - {type: address_house, text: "2"}
+    - {type: address_apartment, text: "5"}
+
+- id: free-text-no-order-as-postal
+  tags: [positive, address, free_text]
+  input: "Адрес доставки: Москва, улица Ленина, дом 12. Номер заказа 990020."
+  expected:
+    - {type: address_city, text: "Москва"}
+    - {type: address_street, text: "улица Ленина"}
+    - {type: address_house, text: "12"}
+
+- id: free-text-bank-near-personal-address
+  tags: [positive, address, free_text]
+  input: "Адрес доставки: Москва, улица Ленина, дом 12, рядом с банком."
+  expected:
+    - {type: address_city, text: "Москва"}
+    - {type: address_street, text: "улица Ленина"}
+    - {type: address_house, text: "12"}
+
+- id: free-text-recipient-adjacent
+  tags: [positive, person, free_text]
+  input: "Получатель: Сидоров Пётр Иванович"
+  expected:
+    - {type: person, text: "Сидоров Пётр Иванович"}
+
+- id: negative-recipient-next-sentence
+  tags: [negative, person, free_text]
+  input: "Получатель заказа неизвестен. Александр Пушкин выступил на сцене."
+  expected: []
+
+- id: negative-client-author-mention
+  tags: [negative, person, free_text]
+  input: "Клиент выбрал автора Александр Пушкин для доклада."
+  expected: []
+
+- id: negative-nobel-recipient
+  tags: [negative, person, free_text]
+  input: "Получатель Нобелевской премии Александр Пушкин выступил на сцене."
+  expected: []
