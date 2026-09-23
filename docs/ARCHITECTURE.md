@@ -81,10 +81,10 @@ Status: **accepted baseline**
                     | AES-GCM + TTL |
                     +---------------+
 
-logs -> structured stdout
-metrics -> /metrics
 health -> /healthz
 ```
+
+Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. До E5–E8 detection и masking идут через stub в `application/stubs.py`, а не через отдельные engine-модули.
 
 Один deploy содержит приложение и Redis. Kubernetes, Kafka/RabbitMQ, PostgreSQL, Celery и отдельные microservices не входят в baseline.
 
@@ -105,8 +105,8 @@ E4 не добавляет обязательный auth/system header: consumer
 
 Допустимы:
 
-- `GET /healthz` — readiness/liveness;
-- `GET /metrics` — технические метрики.
+- `GET /healthz` — liveness: процесс отвечает. Redis и возможность записать сессию не проверяются; их отказ виден на `POST /process` как 503.
+- `GET /metrics` — технические метрики, маршрут добавляется в E12. Сейчас его нет.
 
 Они не меняют обязательный контракт и не содержат raw PII.
 
@@ -332,10 +332,12 @@ Detection[] -> MaskStrategy -> MaskResult
 
 Это обязательно, потому что официальный канонический формат всех масок не раскрыт, а ТЗ требует гибкость policies.
 
-Baseline interfaces:
+Baseline interfaces, которые выбирает masking epic:
 
 - `CompetitionMaskStrategy` — формат, выбранный для официального scoring после проверки доступных примеров;
 - `PlaceholderMaskStrategy` — уникальные stable placeholders для надёжного product LLM-response demask.
+
+До этих renderer-ов `create_app` всегда использует placeholder stub из `application/stubs.py`. Имя `mask_strategy` из YAML сохраняется в сессии, но `competition` и `placeholder` сейчас дают один и тот же текст маски.
 
 `PlaceholderMaskStrategy` — внутренняя стратегия маскирования baseline, а не заявленная бонусная tokenization/detokenization feature из ТЗ. Полноценная настраиваемая токенизация остаётся bonus backlog.
 
@@ -496,6 +498,8 @@ Redis не публикуется наружу.
 
 ## 15. Структура кода
 
+Текущее дерево. Каталоги detection engine, отдельных mask strategy, observability и `scripts/package.py` не создаются, пока у них нет реализации.
+
 ```text
 src/llm_proxy/
 ├── main.py
@@ -506,48 +510,35 @@ src/llm_proxy/
 │   ├── overload.py
 │   └── stubs.py
 ├── detection/
-│   ├── models.py
-│   ├── engine.py
-│   ├── context.py
-│   ├── overlap.py
-│   ├── structured/
-│   └── contextual/
+│   └── models.py
 ├── masking/
-│   ├── base.py
-│   ├── competition.py
-│   └── placeholder.py
+│   └── base.py
 ├── state/
 │   ├── models.py
 │   ├── redis_store.py
 │   └── crypto.py
-├── policies/
-│   ├── models.py
-│   ├── loader.py
-│   └── consumer_resolver.py
-└── observability/
-    ├── logging.py
-    └── metrics.py
+└── policies/
+    ├── models.py
+    ├── loader.py
+    └── consumer_resolver.py
 
 config/
 └── systems.example.yaml
 
 tests/
-├── unit/
-├── integration/
-├── quality/
-├── security/
-└── load/
+└── test_*.py
 
 scripts/
-├── verify.py
-└── package.py
+└── verify.py
 ```
 
 Не добавлять слои/директории заранее, если в них ещё нет реальной обязанности.
 
 ## 16. Verification mapping
 
-| Requirement | Architecture | Evidence |
+Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E4 получены контракт `/process`, retry, exact и product demask, изоляция политик, 429 и шифрование сессии. Quality corpus, логи, метрики, k6 и ZIP ещё не собраны.
+
+| Requirement | Architecture | Запланированное доказательство |
 | --- | --- | --- |
 | `POST /process` | API layer | integration contract test |
 | retry/idempotency | ProcessService state machine | retry + concurrent tests |

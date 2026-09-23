@@ -206,6 +206,47 @@ async def test_http_mask_unmask_flow_uses_strict_result_contract(tmp_path: Path)
 
 
 @pytest.mark.asyncio
+async def test_http_preserves_payload_id_without_trimming(tmp_path: Path) -> None:
+    config_path = tmp_path / "systems.yaml"
+    write_config(
+        config_path,
+        """systems:
+  alfa_tester:
+    enabled: true
+    pii_types: all
+    allow_demask: true
+    mask_strategy: competition
+""",
+    )
+    app, _ = make_app(config_path)
+    spaced_id = " payload-1 "
+    plain_id = "payload-1"
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        spaced = await client.post(
+            "/process",
+            json={"payload": "spaced synthetic@example.test", "payload_id": spaced_id},
+        )
+        plain = await client.post(
+            "/process",
+            json={"payload": "plain synthetic@example.test", "payload_id": plain_id},
+        )
+        spaced_unmask = await client.post(
+            "/process",
+            json={"payload": spaced.json()["result"], "payload_id": spaced_id},
+        )
+
+    assert spaced.status_code == 200
+    assert plain.status_code == 200
+    assert spaced.json()["result"] != plain.json()["result"]
+    assert spaced_unmask.status_code == 200
+    assert spaced_unmask.json() == {"result": "spaced synthetic@example.test"}
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("body", "expected_detail"),
     [
@@ -214,6 +255,7 @@ async def test_http_mask_unmask_flow_uses_strict_result_contract(tmp_path: Path)
         ({"payload": "text", "payload_id": "payload-1", "extra": True}, "invalid request"),
         ({"payload": 10, "payload_id": "payload-1"}, "invalid request"),
         ({"payload": "   ", "payload_id": "payload-1"}, "invalid request"),
+        ({"payload": "text", "payload_id": "   "}, "invalid request"),
     ],
 )
 async def test_http_validation_errors_are_bounded(

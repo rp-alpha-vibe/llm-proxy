@@ -13,7 +13,7 @@ Status: **accepted execution plan**
 
 | Срок, МСК | Наблюдаемый результат |
 | --- | --- |
-| До 00:30 | E4: добавить отсутствующую dev-зависимость для async-тестов, выполнить clean-environment verify и один реальный HTTP → Redis mask/retry/unmask smoke; короткий review и checkpoint. Доступность публичного URL назначить отдельному исполнителю сразу. |
+| До 00:30 | Сделано: checkpoint E4 — `pytest-asyncio`, clean-environment verify и HTTP → Redis mask/retry/unmask. Публичный URL остаётся отдельным потоком. |
 | До 02:30 | Первый deployment и ZIP с кодом готовы для ранней проверки на сайте; выяснены поддерживаемый доступ AlfaSonar и доступные примеры масок. Отсутствие сервера/URL — немедленный blocker для deployment-потока. |
 | До 08:00 | Первый общий вариант со всеми обязательными категориями: детекторы, контекст, разрешение пересечений, competition mask и вручную размеченный компактный корпус. |
 | До 12:00 | Интеграционная проверка всех типов, negatives, перекрытий, exact round-trip и нового ответа LLM; исправлены крупнейшие ошибки качества. |
@@ -88,13 +88,13 @@ clean checkout
 
 ### Tasks
 
-- [ ] E1.1 Определить `PiiType` для всех обязательных категорий.
-- [ ] E1.2 Определить `Detection(type,start,end,confidence,detector_id,...)`.
-- [ ] E1.3 Определить `MaskResult(text, entities)`.
-- [ ] E1.4 Определить `SessionRecord`.
-- [ ] E1.5 Определить `ConsumerPolicy`.
-- [ ] E1.6 Определить минимальные interfaces/protocols: `Detector`, `MaskStrategy`, `StateStore`, `ConsumerResolver`, `PolicyRegistry`.
-- [ ] E1.7 Unit tests для validation/serialization и completeness обязательных PII типов.
+- [x] E1.1 Определить `PiiType` для всех обязательных категорий.
+- [x] E1.2 Определить `Detection(type,start,end,confidence,detector_id,...)`.
+- [x] E1.3 Определить `MaskResult(text, entities)`.
+- [x] E1.4 Определить `SessionRecord`.
+- [x] E1.5 Определить `ConsumerPolicy`.
+- [x] E1.6 Определить минимальные interfaces/protocols: `Detector`, `MaskStrategy`, `StateStore`, `ConsumerResolver`, `PolicyRegistry`.
+- [x] E1.7 Unit tests для validation/serialization и completeness обязательных PII типов.
 
 ### Acceptance
 

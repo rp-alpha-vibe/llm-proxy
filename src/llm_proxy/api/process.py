@@ -51,7 +51,7 @@ class ProcessRequest(BaseModel):
     def payload_id_must_not_be_blank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("payload_id must not be blank")
-        return value.strip()
+        return value
 
 
 class ProcessResponse(BaseModel):

@@ -81,7 +81,7 @@ CI использует ту же команду.
 
 ## Политики потребителей
 
-Добавьте систему в `config/systems.example.yaml` под `systems` и задайте для неё `enabled`, `pii_types` и `allow_demask`. Потребитель runtime выбирается через `LLM_PROXY_DEFAULT_CONSUMER_ID`; официальный запрос `/process` не содержит `system_id` или обязательного auth header. Перезапустите приложение после изменения YAML; неизвестный или отключённый потребитель получает отказ, а policy и Redis-session остаются изолированными.
+Добавьте систему в `config/systems.example.yaml` под `systems` и задайте для неё `enabled`, `pii_types` и `allow_demask`. Потребитель runtime выбирается через `LLM_PROXY_DEFAULT_CONSUMER_ID`; официальный запрос `/process` не содержит `system_id` или обязательного auth header. Перезапустите приложение после изменения YAML; неизвестный или отключённый потребитель получает отказ, а policy и Redis-session остаются изолированными. Поле `mask_strategy` записывается в сессию, но до отдельных renderer-ов и `competition`, и `placeholder` маскируются одним placeholder stub.
 
 ## Текущий этап
 

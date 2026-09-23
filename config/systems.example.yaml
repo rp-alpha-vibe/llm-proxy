@@ -1,3 +1,4 @@
+# mask_strategy сохраняется в сессии. До появления отдельных renderer-ов оба значения дают один placeholder stub.
 systems:
   alfa_tester:
     enabled: true
