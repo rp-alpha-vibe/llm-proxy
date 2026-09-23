@@ -504,7 +504,7 @@ Redis не публикуется наружу.
 
 ## 15. Структура кода
 
-Текущее дерево. `scripts/package.py` не создаётся, пока у него нет реализации.
+Текущее дерево. `scripts/package.py` собирает ZIP по allowlist `src/`, `config/` и файлам сборки, затем повторно открывает архив и отклоняет blacklist.
 
 ```text
 src/llm_proxy/
@@ -580,7 +580,7 @@ scripts/
 
 ## 16. Verification mapping
 
-Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E13 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus, security tests, structured completion log, Prometheus metrics и локальный k6 baseline. ZIP ещё не собран.
+Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E13 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus, security tests, structured completion log, Prometheus metrics и локальный k6 baseline. `scripts/package.py` собирает исходный ZIP и локально поднимает его через Docker; публичный URL и отдельная презентация ещё не готовы.
 
 | Requirement | Architecture | Запланированное доказательство |
 | --- | --- | --- |

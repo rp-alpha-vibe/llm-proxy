@@ -50,7 +50,9 @@ Baseline считается готовым только когда одновр�
 
 ## Запуск
 
-Требования: Python 3.12 и Docker Compose. Скопируйте `.env.example` в `.env`, задайте `LLM_PROXY_ENCRYPTION_KEY` длиной 16, 24 или 32 байта и запустите стек:
+Требования: Python 3.12 и Docker Compose. Скопируйте `.env.example` в `.env`, задайте `LLM_PROXY_ENCRYPTION_KEY` длиной 16, 24 или 32 байта и запустите стек.
+
+Потребитель задаётся `LLM_PROXY_DEFAULT_CONSUMER_ID` и должен совпадать с `id` в `config/systems.example.yaml`. Для официального прогона оставьте `alfa_tester`: политика `competition` пишет локальный обратимый токен `<TYPE_n>`. Ключ шифрования сессии передаётся только через окружение и в репозиторий не попадает. Redis остаётся во внутренней сети compose и наружу не публикуется. Запрос тестера — `POST /process` с полями `payload` и `payload_id`, без дополнительных обязательных заголовков.
 
 ```bash
 python -m pip install -e ".[dev]"

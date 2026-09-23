@@ -450,16 +450,16 @@ Baseline проходит требования проекта; large payload pro
 
 ### Tasks
 
-- [ ] E15.1 Production Docker image.
-- [ ] E15.2 App + private Redis topology.
-- [ ] E15.3 Использовать внешний HTTPS/platform TLS termination, если он доступен; HTTP остаётся допустимым для официального tester согласно контракту.
-- [ ] E15.4 Runtime secrets/config только через environment/secret.
-- [ ] E15.5 Создать `scripts/package.py`.
-- [ ] E15.6 ZIP строится по allowlist и содержит только исходники решения и минимальные файлы, необходимые для его сборки/запуска/конфигурации; внутренние project docs и agent instructions не включаются без явного требования организаторов.
-- [ ] E15.7 Автоматически исключить `.git`, `.agents`, внутренние `docs/`, envs, cache, coverage, build/dist, runtime data, datasets, media, IDE files.
-- [ ] E15.8 Script повторно открывает ZIP и проверяет blacklist.
-- [ ] E15.9 Инструкция настройки consumer <= 5 предложений.
-- [ ] E15.10 Clean-environment smoke из содержимого submission package.
+- [x] E15.1 Production Docker image.
+- [x] E15.2 App + private Redis topology.
+- [x] E15.3 Использовать внешний HTTPS/platform TLS termination, если он доступен; HTTP остаётся допустимым для официального tester согласно контракту.
+- [x] E15.4 Runtime secrets/config только через environment/secret.
+- [x] E15.5 Создать `scripts/package.py`.
+- [x] E15.6 ZIP строится по allowlist и содержит только исходники решения и минимальные файлы, необходимые для его сборки/запуска/конфигурации; внутренние project docs и agent instructions не включаются без явного требования организаторов.
+- [x] E15.7 Автоматически исключить `.git`, `.agents`, внутренние `docs/`, envs, cache, coverage, build/dist, runtime data, datasets, media, IDE files.
+- [x] E15.8 Script повторно открывает ZIP и проверяет blacklist.
+- [x] E15.9 Инструкция настройки consumer <= 5 предложений.
+- [x] E15.10 Clean-environment smoke из содержимого submission package.
 - [ ] E15.11 Подготовить отдельную краткую презентацию, проверяемую ссылку на VCS и публичный URL для обязательных полей финальной формы; медиа не включать в source ZIP.
 
 ### Acceptance
