@@ -10,28 +10,22 @@
 | Source ZIP | готово локально | `python scripts/package.py` → `dist/llm-proxy-src.zip` |
 | Презентация | готово к экспорту | `submission/presentation.html` → Print → PDF (до 50 МБ) |
 | Ссылка на VCS | есть, но **private** | https://github.com/rp-alpha-vibe/llm-proxy |
-| Публичный URL сервиса | **временный, работает сейчас** | https://nova-licensing-daughters-readers.trycloudflare.com |
+| Публичный URL сервиса | **Railway, работает сейчас** | https://llm-proxy-production-84c7.up.railway.app |
 | Внешняя проверка ZIP на сайте | не подтверждена | отдельный шаг формы |
 | E14 AlfaSonar | **блокер** | нужен доступ/self-check организаторов |
 
-Проверено на временном URL: `GET /healthz` → 200, `POST /process` с синтетическим email → `contact <EMAIL_1>`.
+Проверено на Railway HTTPS URL для commit `1de1a4f3019127d060243327ef8a597a4d1a29c2`: `GET /healthz` → 200; `POST /process` с синтетическим email → mask, retry с тем же `payload_id` → тот же результат, передача маскированного ответа → exact unmask; `GET /metrics` → 200. Redis private, TTL и отсутствие plaintext в значении сессии проверены. Детали: [Railway deployment](../docs/DEPLOYMENT_RAILWAY.md).
 
-Tunnel живёт, пока на этой машине работают `docker compose -p llm-proxy-submit` и `cloudflared`. После перезапуска URL сменится. Для сдачи лучше заменить на durable deploy.
+Railway не зависит от локального ПК. Limited Trial даёт $5 на 30 дней и выключает deployments при исчерпании кредита; проверять Usage и доступность до 30 сентября 2026 года. Продолжительная доступность пока не доказана.
 
 ## Что должен сделать владелец
 
 1. Решить, может ли репозиторий быть public, или выдать организаторам read-доступ. Сейчас `isPrivate: true`.
 2. Открыть `submission/presentation.html` в браузере → Print → Save as PDF и загрузить PDF на форму.
-3. Либо оставить этот ПК включённым с tunnel до конца проверки, либо выдать credentials на Render/Fly/Railway для постоянного URL.
+3. Использовать постоянный Railway URL из таблицы; перед отправкой проверить `/healthz` и остаток кредита в Railway.
 4. Загрузить на сайт: ZIP, PDF презентации, VCS URL, URL сервиса.
 5. Не путать предварительную проверку ZIP с окончательной отправкой формы.
 
-## Рекомендация по durable deploy
+## Развёртывание
 
-Минимальный вариант совпадает с репозиторием: `Dockerfile` + `docker-compose.yml`, Redis private, HTTP наружу, TLS на площадке.
-
-Обязательные env:
-
-- `LLM_PROXY_ENCRYPTION_KEY` (16/24/32 байта, не из репозитория)
-- `LLM_PROXY_DEFAULT_CONSUMER_ID=alfa_tester`
-- `LLM_PROXY_CONFIG_PATH=/app/config/systems.example.yaml`
+Фактическая схема и порядок повторного deploy описаны в [docs/DEPLOYMENT_RAILWAY.md](../docs/DEPLOYMENT_RAILWAY.md). E14 AlfaSonar, внешняя проверка ZIP и E16 submission gate остаются открытыми.
