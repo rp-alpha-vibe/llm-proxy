@@ -1,0 +1,297 @@
+- id: email-basic
+  tags: [positive, basic, email]
+  input: "Письмо synthetic@example.test."
+  expected:
+    - {type: email, text: synthetic@example.test}
+
+- id: email-case
+  tags: [positive, case, email]
+  input: "Контакт USER@example.test,"
+  expected:
+    - {type: email, text: USER@example.test}
+
+- id: phone-basic
+  tags: [positive, basic, phone]
+  input: "тел. +7 (900) 123-45-67."
+  expected:
+    - {type: phone, text: "+7 (900) 123-45-67"}
+
+- id: phone-format
+  tags: [positive, format, phone]
+  input: "Звонок 8 (999) 123-45-67."
+  expected:
+    - {type: phone, text: "8 (999) 123-45-67"}
+
+- id: inn-10
+  tags: [positive, basic, inn]
+  input: "ИНН 5001007329."
+  expected:
+    - {type: inn, text: "5001007329"}
+
+- id: inn-12-case
+  tags: [positive, case, inn]
+  input: "инн 500100732259,"
+  expected:
+    - {type: inn, text: "500100732259"}
+
+- id: pan-grouped
+  tags: [positive, format, card]
+  input: "карта 4111 1111 1111 1111."
+  expected:
+    - {type: card, text: "4111 1111 1111 1111"}
+
+- id: pan-dashed
+  tags: [positive, format, card]
+  input: "PAN 4111-1111-1111-1111."
+  expected:
+    - {type: card, text: "4111-1111-1111-1111"}
+
+- id: passport-spaced
+  tags: [positive, basic, passport]
+  input: "Паспорт 45 12 123456."
+  expected:
+    - {type: passport, text: "45 12 123456"}
+
+- id: passport-case-compact
+  tags: [positive, case, passport]
+  input: "ПАСПОРТ 4512123456"
+  expected:
+    - {type: passport, text: "4512123456"}
+
+- id: passport-labeled
+  tags: [positive, format, passport]
+  input: "серия 12 34 номер 123456"
+  expected:
+    - {type: passport, text: "12 34"}
+    - {type: passport, text: "123456"}
+
+- id: division-basic
+  tags: [positive, basic, passport_division_code]
+  input: "код подразделения 770-001."
+  expected:
+    - {type: passport_division_code, text: "770-001"}
+
+- id: division-case
+  tags: [positive, case, passport_division_code]
+  input: "ПОДРАЗДЕЛЕНИЯ: 123-456,"
+  expected:
+    - {type: passport_division_code, text: "123-456"}
+
+- id: driver-basic
+  tags: [positive, basic, driver_license]
+  input: "водительское удостоверение 11 22 334455."
+  expected:
+    - {type: driver_license, text: "11 22 334455"}
+
+- id: driver-case
+  tags: [positive, case, driver_license]
+  input: "ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ 98 76 111111"
+  expected:
+    - {type: driver_license, text: "98 76 111111"}
+
+- id: birth-date-numeric
+  tags: [positive, basic, birth_date]
+  input: "дата рождения 01.02.1990."
+  expected:
+    - {type: birth_date, text: "01.02.1990"}
+
+- id: birth-date-textual
+  tags: [positive, format, birth_date]
+  input: "родился 6 июня 1990 года"
+  expected:
+    - {type: birth_date, text: "6 июня 1990"}
+
+- id: issue-date
+  tags: [positive, basic, passport_issue_date]
+  input: "дата выдачи 12.03.2010."
+  expected:
+    - {type: passport_issue_date, text: "12.03.2010"}
+
+- id: cvv-basic
+  tags: [positive, basic, cvv]
+  input: "CVV: 123."
+  expected:
+    - {type: cvv, text: "123"}
+
+- id: cvv-case
+  tags: [positive, case, cvv]
+  input: "cvc 907"
+  expected:
+    - {type: cvv, text: "907"}
+
+- id: pin-basic
+  tags: [positive, basic, pin]
+  input: "пин-код карты 4321."
+  expected:
+    - {type: pin, text: "4321"}
+
+- id: citizenship-basic
+  tags: [positive, basic, citizenship]
+  input: "гражданство: Россия."
+  expected:
+    - {type: citizenship, text: "Россия"}
+
+- id: citizenship-case
+  tags: [positive, case, citizenship]
+  input: "гражданин РФ"
+  expected:
+    - {type: citizenship, text: "РФ"}
+
+- id: birth-place
+  tags: [positive, basic, birth_place]
+  input: "место рождения: город Казань."
+  expected:
+    - {type: birth_place, text: "город Казань"}
+
+- id: issuer
+  tags: [positive, basic, passport_issuer]
+  input: "паспорт выдан 12.03.2010 ОВД города Казани."
+  expected:
+    - {type: passport_issue_date, text: "12.03.2010"}
+    - {type: passport_issuer, text: "ОВД города Казани"}
+
+- id: person-basic
+  tags: [positive, basic, person]
+  input: "ФИО: Иван Петров."
+  expected:
+    - {type: person, text: "Иван Петров"}
+
+- id: person-case
+  tags: [positive, case, person]
+  input: "ФИО: ИВАН ПЕТРОВ"
+  expected:
+    - {type: person, text: "ИВАН ПЕТРОВ"}
+
+- id: cardholder
+  tags: [positive, basic, cardholder]
+  input: "держатель карты Петр Сидоров."
+  expected:
+    - {type: cardholder, text: "Петр Сидоров"}
+
+- id: address-components
+  tags: [positive, basic, address]
+  input: "адрес регистрации: 123456, Россия, Московская область, Ленинский район, город Самара, улица Баумана, дом 10, квартира 5."
+  expected:
+    - {type: address_postal_code, text: "123456"}
+    - {type: address_country, text: "Россия"}
+    - {type: address_region, text: "Московская область"}
+    - {type: address_district, text: "Ленинский район"}
+    - {type: address_city, text: "город Самара"}
+    - {type: address_street, text: "улица Баумана"}
+    - {type: address_building, text: "дом 10"}
+    - {type: address_apartment, text: "квартира 5"}
+
+- id: address-parent
+  tags: [positive, basic, address]
+  enabled_types: [address]
+  input: "адрес регистрации: 123456, Россия, город Самара, улица Баумана, дом 10."
+  expected:
+    - {type: address, text: "123456, Россия, город Самара, улица Баумана, дом 10"}
+
+- id: documents-together
+  tags: [positive, multiple, passport, driver_license]
+  input: "паспорт 45 12 123456, водительское удостоверение 11 22 334455."
+  expected:
+    - {type: passport, text: "45 12 123456"}
+    - {type: driver_license, text: "11 22 334455"}
+
+- id: inn-loses-to-closer-passport
+  tags: [overlap, passport, inn]
+  input: "паспорт 5001007329"
+  expected:
+    - {type: passport, text: "5001007329"}
+
+- id: cardholder-not-person
+  tags: [overlap, cardholder, person]
+  input: "держатель карты Иван Петров"
+  expected:
+    - {type: cardholder, text: "Иван Петров"}
+
+- id: mixed-sentence
+  tags: [positive, multiple, complex]
+  input: "ФИО: Иван Петров, дата рождения 6 июня 1990, место рождения: город Казань, гражданство: Россия, паспорт 45 12 123456, код подразделения 770-001, паспорт выдан 12.03.2010 ОВД города Казани, водительское удостоверение 98 76 111111, адрес регистрации: 123456, Россия, Московская область, Ленинский район, город Самара, улица Баумана, дом 10, квартира 5, тел. +7 (900) 123-45-67, почта synthetic@example.test, ИНН 500100732259, карта 4111 1111 1111 1111, CVV 123, пин-код карты 4321, держатель карты Петр Сидоров."
+  expected:
+    - {type: person, text: "Иван Петров"}
+    - {type: birth_date, text: "6 июня 1990"}
+    - {type: birth_place, text: "город Казань"}
+    - {type: citizenship, text: "Россия", occurrence: 1}
+    - {type: passport, text: "45 12 123456"}
+    - {type: passport_division_code, text: "770-001"}
+    - {type: passport_issue_date, text: "12.03.2010"}
+    - {type: passport_issuer, text: "ОВД города Казани"}
+    - {type: driver_license, text: "98 76 111111"}
+    - {type: address_postal_code, text: "123456", occurrence: 2}
+    - {type: address_country, text: "Россия", occurrence: 2}
+    - {type: address_region, text: "Московская область"}
+    - {type: address_district, text: "Ленинский район"}
+    - {type: address_city, text: "город Самара"}
+    - {type: address_street, text: "улица Баумана"}
+    - {type: address_building, text: "дом 10"}
+    - {type: address_apartment, text: "квартира 5"}
+    - {type: phone, text: "+7 (900) 123-45-67"}
+    - {type: email, text: synthetic@example.test}
+    - {type: inn, text: "500100732259"}
+    - {type: card, text: "4111 1111 1111 1111"}
+    - {type: cvv, text: "123", occurrence: 4}
+    - {type: pin, text: "4321"}
+    - {type: cardholder, text: "Петр Сидоров"}
+
+- id: negative-public-person
+  tags: [negative, person]
+  input: "Александр Пушкин написал стихи."
+  expected: []
+
+- id: negative-public-birth
+  tags: [negative, person, birth_place]
+  input: "Александр Пушкин родился в Москве."
+  expected: []
+
+- id: negative-ordinary-date
+  tags: [negative, birth_date]
+  input: "встреча назначена на 12.03.2024."
+  expected: []
+
+- id: negative-invalid-birth-date
+  tags: [negative, birth_date]
+  input: "дата рождения 31.02.1990"
+  expected: []
+
+- id: negative-bank-address
+  tags: [negative, address]
+  input: "адрес отделения банка: город Москва, улица Тверская, дом 1."
+  expected: []
+
+- id: negative-bare-passport
+  tags: [negative, passport]
+  input: "45 12 123456"
+  expected: []
+
+- id: negative-bare-division
+  tags: [negative, passport_division_code]
+  input: "770-001"
+  expected: []
+
+- id: negative-long-number
+  tags: [negative, card]
+  input: "41111111111111111111"
+  expected: []
+
+- id: negative-bad-inn
+  tags: [negative, inn]
+  input: "1234567890"
+  expected: []
+
+- id: negative-order-number
+  tags: [negative, cvv]
+  input: "заказ 482"
+  expected: []
+
+- id: negative-pin-without-card
+  tags: [negative, pin]
+  input: "пин 4321"
+  expected: []
+
+- id: negative-citizenship-word
+  tags: [negative, citizenship]
+  input: "Гражданский кодекс"
+  expected: []

@@ -319,18 +319,18 @@ Synthetic LLM response с reordered/repeated known masks даёт ожидаем
 
 ### Tasks
 
-- [ ] E10.1 Определить fixture schema: input, expected spans/types, expected mask при наличии канона, expected round-trip, tags.
-- [ ] E10.2 Для каждого обязательного типа покрыть basic positive.
-- [ ] E10.3 Добавить formatting/case variants.
-- [ ] E10.4 Добавить contextual positives и negatives.
-- [ ] E10.5 Добавить multiple PII и overlap/conflict cases.
-- [ ] E10.6 Добавить сложные identity/card/address предложения.
-- [ ] E10.7 Negative corpus: public persons, bank addresses, ordinary dates, arbitrary IDs/long numbers/3-4 digit numbers.
-- [ ] E10.8 Реализовать quality runner: precision/recall/F1 per type, false positives, exact round-trip.
-- [ ] E10.9 Expected данные задаются вручную, не detector-ом.
-- [ ] E10.10 Зафиксировать corpus size, baseline и локальные thresholds до tuning.
-- [ ] E10.11 Gap fixing: weakest category -> inspect errors -> smallest fix -> rerun.
-- [ ] E10.12 Не выдавать локальный F1 за официальный span-based scoring.
+- [x] E10.1 Определить fixture schema: input, expected spans/types, expected mask при наличии канона, expected round-trip, tags.
+- [x] E10.2 Для каждого обязательного типа покрыть basic positive.
+- [x] E10.3 Добавить formatting/case variants.
+- [x] E10.4 Добавить contextual positives и negatives.
+- [x] E10.5 Добавить multiple PII и overlap/conflict cases.
+- [x] E10.6 Добавить сложные identity/card/address предложения.
+- [x] E10.7 Negative corpus: public persons, bank addresses, ordinary dates, arbitrary IDs/long numbers/3-4 digit numbers.
+- [x] E10.8 Реализовать quality runner: precision/recall/F1 per type, false positives, exact round-trip.
+- [x] E10.9 Expected данные задаются вручную, не detector-ом.
+- [x] E10.10 Зафиксировать corpus size, baseline и локальные thresholds до tuning.
+- [x] E10.11 Gap fixing: weakest category -> inspect errors -> smallest fix -> rerun.
+- [x] E10.12 Не выдавать локальный F1 за официальный span-based scoring.
 
 ### Acceptance
 

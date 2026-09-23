@@ -75,7 +75,10 @@ docker compose down
 
 ```bash
 python scripts/verify.py
+python -m llm_proxy.quality
 ```
+
+`python -m llm_proxy.quality` печатает локальные precision/recall/F1, false positives и exact round-trip по синтетическому корпусу из 46 fixtures. Пороги зафиксированы в `src/llm_proxy/quality/gate.py`: F1 не ниже 0.95 по каждой покрытой категории, round-trip 1.0, на negative fixtures нет срабатываний. Это не официальный span-based scoring.
 
 CI использует ту же команду.
 
@@ -85,4 +88,4 @@ CI использует ту же команду.
 
 ## Текущий этап
 
-E0–E9 завершены в части правил, renderer-ов и product demask. `POST /process` проходит policy и `ProcessService` до Redis: новый payload маскируется, повтор исходного текста возвращает ту же маску, точная маска восстанавливает исходный текст. Синтетический ответ LLM восстанавливает известные однозначные маски `placeholder` и `competition` при перестановке и повторе, сохраняет новый текст и оставляет неизвестные или неоднозначные токены. Policy `placeholder` маскирует как `[[PII:TYPE:n]]`, policy `competition` — как `<TYPE_n>`. Второй формат — локальное обратимое допущение, пока нет официального образца маски. Локальный NLP/NER не добавлялся: E7.12–E7.13 ждут измеренный quality gap. Async-тесты запускаются через `pytest-asyncio`. Smoke `test_http_redis_mask_retry_and_exact_unmask` использует Redis по `LLM_PROXY_TEST_REDIS_URL` или `redis://127.0.0.1:6379/15` и пропускается, если Redis недоступен; пропуск не заменяет прогон на реальном Redis. Официальный способ допуска AlfaSonar остаётся открытой границей и блокером submission readiness. Quality/load baseline и submission packaging ещё в работе.
+E0–E10 завершены в части правил, renderer-ов, product demask и локального quality gate. `POST /process` проходит policy и `ProcessService` до Redis: новый payload маскируется, повтор исходного текста возвращает ту же маску, точная маска восстанавливает исходный текст. Синтетический ответ LLM восстанавливает известные однозначные маски `placeholder` и `competition` при перестановке и повторе, сохраняет новый текст и оставляет неизвестные или неоднозначные токены. Policy `placeholder` маскирует как `[[PII:TYPE:n]]`, policy `competition` — как `<TYPE_n>`. Второй формат — локальное обратимое допущение, пока нет официального образца маски. `python -m llm_proxy.quality` на 46 синтетических fixtures дал локальный F1 1.0 по каждой обязательной категории, round-trip 1.0 и ноль срабатываний на negative fixtures. Пороги в `gate.py` не снижались. Это не официальный span-based scoring. Локальный NLP/NER не добавлялся: E7.12–E7.13 остаются открытыми, потому что этот корпус не показал quality gap. Async-тесты запускаются через `pytest-asyncio`. Smoke `test_http_redis_mask_retry_and_exact_unmask` использует Redis по `LLM_PROXY_TEST_REDIS_URL` или `redis://127.0.0.1:6379/15` и пропускается, если Redis недоступен; пропуск не заменяет прогон на реальном Redis. Официальный способ допуска AlfaSonar остаётся открытой границей и блокером submission readiness. Load baseline и submission packaging ещё в работе.

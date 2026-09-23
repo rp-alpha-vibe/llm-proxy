@@ -540,6 +540,11 @@ src/llm_proxy/
 │   ├── placeholder.py
 │   ├── competition.py
 │   └── routing.py
+├── quality/
+│   ├── gate.py
+│   ├── schema.py
+│   ├── runner.py
+│   └── corpus.yaml
 ├── state/
 │   ├── models.py
 │   ├── redis_store.py
