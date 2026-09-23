@@ -123,8 +123,8 @@ curl http://localhost:8000/healthz
 Запрос на маскирование **вымышленного** адреса:
 
 ```bash
-curl -X POST "http://localhost:8000/process" \
-  -H "Content-Type: application/json" \
+curl -X POST "http://localhost:8000/process" \\
+  -H "Content-Type: application/json" \\
   --data '{"payload":"Напишите на ivan@example.com.","payload_id":"archive-demo-001"}'
 ```
 
