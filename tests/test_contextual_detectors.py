@@ -166,6 +166,68 @@ def test_person_and_cardholder_context() -> None:
     assert _found("cardholder: IVAN PETROV") == [(PiiType.CARDHOLDER, "IVAN PETROV")]
 
 
+def test_delivery_contacts_confirm_person_and_address_components() -> None:
+    text = (
+        "Оставляю контакты для доставки макета: Новиков Ирина Примеровна, "
+        "+7 000 555-00-10. Адрес: Тестовая Республика, 990010, Демонстрационск, "
+        "улица Макетная, д. 10, кв. 20. Лучше звонить после обеда."
+    )
+
+    assert _found(text) == [
+        (PiiType.PERSON, "Новиков Ирина Примеровна"),
+        (PiiType.ADDRESS_COUNTRY, "Тестовая Республика"),
+        (PiiType.ADDRESS_POSTAL_CODE, "990010"),
+        (PiiType.ADDRESS_CITY, "Демонстрационск"),
+        (PiiType.ADDRESS_STREET, "улица Макетная"),
+        (PiiType.ADDRESS_BUILDING, "д. 10"),
+        (PiiType.ADDRESS_UNIT, "кв. 20"),
+    ]
+
+
+def test_generic_contacts_and_address_stay_unconfirmed_without_personal_context() -> None:
+    assert _found("Контакты редакции: Российский Красный Крест.") == []
+    assert _found("Адрес: \u0433. Москва, улица Тверская, дом 4.") == []
+    assert _found("Контакты редакции. Адрес: \u0433. Москва, улица Тверская, дом 4.") == []
+
+
+@pytest.mark.asyncio
+async def test_delivery_contacts_mask_and_exact_unmask() -> None:
+    from llm_proxy.main import _build_detector
+    from llm_proxy.masking.competition import CompetitionMaskStrategy
+
+    text = (
+        "Оставляю контакты для доставки макета: Новиков Ирина Примеровна, "
+        "+7 000 555-00-10. Адрес: Тестовая Республика, 990010, Демонстрационск, "
+        "улица Макетная, д. 10, кв. 20. Лучше звонить после обеда."
+    )
+    expected = (
+        "Оставляю контакты для доставки макета: <PERSON_1>, <PHONE_2>. "
+        "Адрес: <ADDRESS_COUNTRY_3>, <ADDRESS_POSTAL_CODE_4>, <ADDRESS_CITY_5>, "
+        "<ADDRESS_STREET_6>, <ADDRESS_HOUSE_7>, <ADDRESS_APARTMENT_8>. "
+        "Лучше звонить после обеда."
+    )
+    service = ProcessService(
+        state_store=MemoryStateStore(),
+        detector=_build_detector(),
+        mask_strategy=CompetitionMaskStrategy(),
+    )
+    policy = ConsumerPolicy(
+        policy_id="policy-alfa_tester",
+        system_id="alfa_tester",
+        enabled=True,
+        pii_types="all",
+        allow_demask=True,
+        mask_strategy="competition",
+    )
+    context = ConsumerContext(consumer_id="alfa_tester", policy=policy)
+
+    masked = await service.process(context, "payload-delivery", text)
+    restored = await service.process(context, "payload-delivery", masked.result)
+
+    assert masked.result == expected
+    assert restored.result == text
+
+
 def test_app_wires_contextual_detectors() -> None:
     from llm_proxy.main import _build_detector
 
