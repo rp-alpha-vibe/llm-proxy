@@ -250,17 +250,17 @@ Structured suite green; нет известных систематических
 
 ### Tasks
 
-- [ ] E7.1 Общий date parser: numeric variants и textual Russian dates.
-- [ ] E7.2 Birth date detector через context anchors.
-- [ ] E7.3 Passport issue date detector через отдельный context.
-- [ ] E7.4 CVV/CVC detector, не маскирующий произвольные 3-digit numbers.
-- [ ] E7.5 PIN detector с достаточным card context.
-- [ ] E7.6 Citizenship detector.
-- [ ] E7.7 Birth place detector.
-- [ ] E7.8 Passport issuer detector.
-- [ ] E7.9 Address detector и components; negative organization/bank addresses.
-- [ ] E7.10 Person/FIO detector с contextual positives и public-person negatives.
-- [ ] E7.11 Cardholder detector поверх person-like span + card context.
+- [x] E7.1 Общий date parser: numeric variants и textual Russian dates.
+- [x] E7.2 Birth date detector через context anchors.
+- [x] E7.3 Passport issue date detector через отдельный context.
+- [x] E7.4 CVV/CVC detector, не маскирующий произвольные 3-digit numbers.
+- [x] E7.5 PIN detector с достаточным card context.
+- [x] E7.6 Citizenship detector.
+- [x] E7.7 Birth place detector.
+- [x] E7.8 Passport issuer detector.
+- [x] E7.9 Address detector и components; negative organization/bank addresses.
+- [x] E7.10 Person/FIO detector с contextual positives и public-person negatives.
+- [x] E7.11 Cardholder detector поверх person-like span + card context.
 - [ ] E7.12 После измерения quality рассматривать lightweight local NLP/NER только для доказанного gap.
 - [ ] E7.13 Любой NLP/NER addition обязан пройти quality + performance comparison с baseline.
 

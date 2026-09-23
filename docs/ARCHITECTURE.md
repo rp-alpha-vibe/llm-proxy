@@ -84,7 +84,7 @@ Status: **accepted baseline**
 health -> /healthz
 ```
 
-Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine` и structured-детекторы email, phone, INN, PAN, паспорт, код подразделения и водительское удостоверение. Контекстные категории и отдельные mask strategy ещё не подключены: renderer маски остаётся placeholder stub в `application/stubs.py`.
+Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine`: structured-детекторы и контекстные правила для дат, CVV, PIN, гражданства, места рождения, органа выдачи, адреса, ФИО и держателя карты. Эти правила требуют личного или документного якоря, поэтому публичное упоминание, обычная дата и адрес организации сами по себе не маскируются. Отдельные mask strategy ещё не подключены: renderer маски остаётся placeholder stub в `application/stubs.py`. Локальный NLP/NER не подключён.
 
 Один deploy содержит приложение и Redis. Kubernetes, Kafka/RabbitMQ, PostgreSQL, Celery и отдельные microservices не входят в baseline.
 
@@ -516,7 +516,7 @@ src/llm_proxy/
 │   ├── context.py
 │   ├── overlap.py
 │   ├── engine.py
-│   └── structured/
+│   ├── structured/
 │       ├── __init__.py
 │       ├── common.py
 │       ├── email.py
@@ -526,6 +526,14 @@ src/llm_proxy/
 │       ├── passport.py
 │       ├── division_code.py
 │       └── driver_license.py
+│   └── contextual/
+│       ├── __init__.py
+│       ├── common.py
+│       ├── dates.py
+│       ├── secrets.py
+│       ├── person.py
+│       ├── records.py
+│       └── address.py
 ├── masking/
 │   └── base.py
 ├── state/

@@ -11,6 +11,7 @@ from llm_proxy.api.process import (
 from llm_proxy.application.overload import ConcurrencyGate
 from llm_proxy.application.process_service import ProcessService
 from llm_proxy.application.stubs import SimplePlaceholderMaskStrategy
+from llm_proxy.detection.contextual import register_contextual_detectors
 from llm_proxy.detection.engine import PiiEngine
 from llm_proxy.detection.registry import DetectorRegistry
 from llm_proxy.detection.structured import register_structured_detectors
@@ -32,6 +33,7 @@ def _build_consumer_resolver(settings: Settings) -> ConsumerResolver:
 def _build_detector() -> PiiEngine:
     registry = DetectorRegistry()
     register_structured_detectors(registry)
+    register_contextual_detectors(registry)
     return PiiEngine(registry)
 
 
