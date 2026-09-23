@@ -348,15 +348,15 @@ Synthetic LLM response с reordered/repeated known masks даёт ожидаем
 
 ### Tasks
 
-- [ ] E11.1 Log leak tests для name/phone/email/PAN/passport synthetic values.
-- [ ] E11.2 Metric labels не содержат payload/PII.
-- [ ] E11.3 Redis inspection подтверждает отсутствие plaintext PII.
-- [ ] E11.4 Secrets/key только через environment/secret; real `.env` не commit.
-- [ ] E11.5 Cross-consumer demask isolation.
-- [ ] E11.6 Cross-session demask isolation.
-- [ ] E11.7 Реальный TTL cleanup.
-- [ ] E11.8 Ошибки/exception responses не содержат PII/stack traces.
-- [ ] E11.9 Использовать HTTPS/TLS termination, если deployment platform это предоставляет; не вводить собственный TLS как обязательный blocker, поскольку официальный tester допускает HTTP.
+- [x] E11.1 Log leak tests для name/phone/email/PAN/passport synthetic values.
+- [x] E11.2 Metric labels не содержат payload/PII.
+- [x] E11.3 Redis inspection подтверждает отсутствие plaintext PII.
+- [x] E11.4 Secrets/key только через environment/secret; real `.env` не commit.
+- [x] E11.5 Cross-consumer demask isolation.
+- [x] E11.6 Cross-session demask isolation.
+- [x] E11.7 Реальный TTL cleanup.
+- [x] E11.8 Ошибки/exception responses не содержат PII/stack traces.
+- [x] E11.9 Использовать HTTPS/TLS termination, если deployment platform это предоставляет; не вводить собственный TLS как обязательный blocker, поскольку официальный tester допускает HTTP.
 
 ### Acceptance
 

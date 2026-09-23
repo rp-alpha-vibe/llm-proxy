@@ -639,7 +639,7 @@ async def test_http_redis_mask_retry_and_exact_unmask(tmp_path: Path) -> None:
                 json={"payload": original, "payload_id": payload_id},
             )
             assert masked_response.status_code == 200
-            assert masked_response.json() == {"result": "contact [[PII:EMAIL:1]]"}
+            assert masked_response.json() == {"result": "contact <EMAIL_1>"}
             masked = masked_response.json()["result"]
             retry_response = await client.post(
                 "/process",

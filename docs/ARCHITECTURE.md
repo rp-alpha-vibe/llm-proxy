@@ -568,7 +568,7 @@ scripts/
 
 ## 16. Verification mapping
 
-Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E4 получены контракт `/process`, retry, exact и product demask, изоляция политик, 429 и шифрование сессии. Quality corpus, логи, метрики, k6 и ZIP ещё не собраны.
+Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E11 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus и security tests на утечки. Structured logs, metrics, k6 и ZIP ещё не собраны.
 
 | Requirement | Architecture | Запланированное доказательство |
 | --- | --- | --- |
