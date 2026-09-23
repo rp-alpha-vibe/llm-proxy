@@ -11,7 +11,7 @@
 | Презентация | готово к экспорту | `submission/presentation.html` → Print → PDF (до 50 МБ) |
 | Ссылка на VCS | есть, но **private** | https://github.com/rp-alpha-vibe/llm-proxy |
 | Публичный URL сервиса | **Railway, работает сейчас** | https://llm-proxy-production-84c7.up.railway.app |
-| Нагрузка Railway | probe 100 RPS **pass**; полный 1000/300 с **не гоняли** | [отчёт](railway-load-probe-2026-09-23.md); summary `k6-railway-probe-100rps-summary.json` |
+| Нагрузка Railway | probe 100 RPS **pass**; полный 1000/300 с **block** | [отчёт](railway-load-probe-2026-09-23.md); ~33% ошибок, 76k×429, p95≈10 с |
 | Внешняя проверка ZIP на сайте | не подтверждена | отдельный шаг формы |
 | E14 AlfaSonar | **блокер** | нужен доступ/self-check организаторов |
 

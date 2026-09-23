@@ -91,26 +91,32 @@ docker run --rm ^
 | --- | --- |
 | Функциональный smoke Railway | pass (отдельно подтверждён) |
 | Probe 100 RPS / 30 с после настройки VU | **pass** |
-| Полный §7.1 1000 RPS / 300 с на Railway | **не выполнен** → для заявления о 1000 RPS на deploy остаётся **block** |
+| Полный §7.1 1000 RPS / 300 с на Railway | **block** (см. §4.1) |
 | Локальный §7.1 на dev-машине | pass (справочно; не Railway) |
+
+### 4.1. Полный baseline на Railway (RATE=1000, 300 с) — fail
+
+| Метрика | Значение | Порог | Вердикт |
+| --- | --- | --- | --- |
+| HTTP reqs (всего) | 292944 | — | — |
+| `http_req_failed` | **32.95%** | 0% | **fail** |
+| `status_429` | **76483** | 0 на baseline | **fail** |
+| `dropped_iterations` | **10057** | 0 | **fail** |
+| p95 latency | **9.99 с** | < 1 с | **fail** |
+| Exit code | 99 | 0 | **fail** |
+
+Сырые метрики: `submission/k6-railway-baseline-1000rps-summary.json`.
+
+Railway выдерживает короткий probe 100 RPS, но не командный gate 1000 RPS / 300 с (перегрузка → 429, таймауты, dropped iterations).
 
 ---
 
 ## 5. Следующий шаг
 
-Повторить полный прогон:
-
-```bash
-docker run --rm -v "%cd%\scripts\load:/scripts" ^
-  -e BASE_URL=https://llm-proxy-production-84c7.up.railway.app ^
-  -e RATE=1000 -e WARMUP_DURATION=15s -e BASELINE_DURATION=300s ^
-  grafana/k6 run /scripts/mask_unmask.js
-```
-
-(при RATE≥1000 скрипт снова использует preAllocated 800 / max 5000)
+Для 1000 RPS на Railway нужны более мощные ресурсы (больше workers/CPU) или принять, что deploy URL — для демо/функциональной сдачи, а доказательство §7.1 остаётся локальным. Пороги скрипта не ослаблять.
 
 ---
 
 ## 6. Итог одной строкой
 
-Первый probe на Railway упал из‑за транспортных сбоев при пуле 800 VU; после `PRE_ALLOCATED_VUS=50` / `MAX_VUS=200` probe 100 RPS / 30 с прошёл без ошибок; полный 1000/300 с ещё не гоняли.
+Probe 100 RPS на Railway после уменьшения VU — pass; полный 1000 RPS / 300 с — **block** (≈33% ошибок, десятки тысяч 429, p95 ≈10 с).
