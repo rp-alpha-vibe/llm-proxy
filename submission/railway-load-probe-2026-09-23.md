@@ -1,7 +1,7 @@
 # Отчёт: нагрузочный probe на Railway
 
 - **Дата:** 23 сентября 2026
-- **Цель:** проверить, можно ли прогнать командный gate `REQUIREMENTS.md` §7.1 на deployed URL
+- **Цель:** проверить устойчивость deployed URL перед полным gate `REQUIREMENTS.md` §7.1
 - **URL:** https://llm-proxy-production-84c7.up.railway.app/
 - **Скрипт:** `scripts/load/mask_unmask.js` (k6, Docker `grafana/k6`)
 - **Официальный scoring организаторов:** не выполнялся и не заявляется
@@ -19,108 +19,98 @@
 | Технические ошибки | 0% (таймауты, 5xx, сетевые сбои, невалидные ответы) |
 | 429 на baseline | 0 |
 
-План: короткий probe → при зелёном результате полный прогон RATE=1000 на 300 с.
-
-Полный прогон **не запускался**: probe уже не прошёл пороги.
+План: короткий probe RATE=100 → при зелёном результате полный RATE=1000 на 300 с.
 
 ---
 
-## 2. Параметры probe
+## 2. Probe A — исходный (fail)
 
 | Параметр | Значение |
 | --- | --- |
-| `BASE_URL` | `https://llm-proxy-production-84c7.up.railway.app` |
 | `RATE` | 100 |
-| `WARMUP_DURATION` | 10s (исключён из порогов) |
-| `BASELINE_DURATION` | 30s |
-| Сценарий | stateful mask → unmask; 1 HTTP-вызов = 1 операция |
-| Генератор | k6 в локальном Docker; скрипт заранее выделяет 800 VU для baseline при любом `RATE` |
-| Exit code k6 | 99 (thresholds crossed) |
+| Warmup / baseline | 10s / 30s |
+| `preAllocatedVUs` / `maxVUs` | **800 / 5000** (жёстко в скрипте) |
+| Exit code | 99 |
+
+| Метрика baseline | Значение | Вердикт |
+| --- | --- | --- |
+| HTTP reqs | 3001 | — |
+| `http_req_failed` | 0.39% (12) | **fail** |
+| checks | 99.60% | **fail** |
+| 429 | 0 | pass |
+| p95 | 83.8 мс | pass |
+
+Ошибки генератора: `request timeout`, `unexpected EOF`.  
+Гипотеза: чрезмерный пул заранее выделенных VU у короткого probe создавал лишнюю конкуренцию/хвост на стороне клиента.
+
+---
+
+## 3. Probe B — после уменьшения VU (pass)
+
+Изменения в `mask_unmask.js`:
+
+- `PRE_ALLOCATED_VUS` / `MAX_VUS` задаются через env;
+- при `RATE < 1000` дефолты меньше (не 800/5000);
+- для полного baseline 1000 RPS прежние 800/5000 сохранены.
 
 Команда:
 
 ```bash
-docker run --rm -v "%cd%\scripts\load:/scripts" ^
+docker run --rm ^
+  -v "%cd%\scripts\load:/scripts" ^
+  -v "%cd%\submission:/out" ^
   -e BASE_URL=https://llm-proxy-production-84c7.up.railway.app ^
   -e RATE=100 -e WARMUP_DURATION=10s -e BASELINE_DURATION=30s ^
-  grafana/k6 run /scripts/mask_unmask.js
+  -e PRE_ALLOCATED_VUS=50 -e MAX_VUS=200 ^
+  grafana/k6 run --summary-export=/out/k6-railway-probe-100rps-summary.json ^
+  /scripts/mask_unmask.js
 ```
 
----
+| Параметр | Значение |
+| --- | --- |
+| `PRE_ALLOCATED_VUS` / `MAX_VUS` | **50 / 200** |
+| Наблюдаемый max VUs | 9 |
+| Exit code | **0** |
+| Сырые метрики k6 | `submission/k6-railway-probe-100rps-summary.json` |
 
-## 3. Результаты baseline (фаза `baseline`)
+| Метрика baseline | Значение | Вердикт |
+| --- | --- | --- |
+| HTTP reqs | 3001 | — |
+| `http_req_failed` | **0.00%** (0) | **pass** |
+| checks | **100%** | **pass** |
+| unexpected_status / 429 / dropped | 0 / 0 / 0 | **pass** |
+| p50 / p95 / p99 / max | ~78 / **86.04** / ~98 / 245.75 мс | **pass** (p95) |
 
-| Метрика | Значение | Порог §7.1 / скрипта | Вердикт |
-| --- | --- | --- | --- |
-| HTTP-запросов (baseline) | 3001 | — | — |
-| Offered / успешный RPS | ~100 / ~99.6 (2989 корректных операций за 30 с) | 1000 успешных RPS на полном baseline | **не подтверждено** |
-| `http_req_failed` | **12 / 3001** (около 0.4%) | 0% | **fail** |
-| `checks` (valid operation) | **99.60%** | 100% | **fail** |
-| `unexpected_status` | **12** (счётчик включает транспортные ошибки со статусом 0) | 0 | **fail** |
-| `status_429` | 0 | 0 | pass |
-| `dropped_iterations` | 0 | 0 | pass |
-| p95 `http_req_duration` | 83.8 мс | < 1000 мс | pass |
-| med latency | ~73.5 мс | — | — |
-| max latency | до ~10 с (таймауты) | — | — |
-
-Метрики генератора во время probe не были сохранены. После восстановления панели Railway окно `Last 3 hr`, включающее probe, показало около 3,2 тыс. запросов: все учтённые Railway запросы имели класс `2xx`, HTTP error rate был 0%, а p99 оставался ниже 40 мс. CPU приложения был существенно ниже 0,1 vCPU, память — примерно 40–100 МБ; Redis также не показывал упора в CPU или память (менее примерно 15 МБ). Эти значения сняты постфактум с графиков и не заменяют экспорт сырых временных рядов. 30-секундный probe не заменяет обязательное 300-секундное окно §7.1.
-
-Наблюдаемые ошибки в логе генератора:
-
-- `request timeout`
-- `unexpected EOF`
+Это **не** полный §7.1 на 1000 RPS / 300 с. Это зелёный короткий probe на Railway.
 
 ---
 
 ## 4. Вердикт
 
-**`block` для заявления о прохождении §7.1 на Railway.**
-
-При offered ~100 RPS сквозной путь от локального k6 до публичного URL дал 12 неуспешных запросов. Railway Metrics не зарегистрировал соответствующих HTTP-ошибок, а Railway Logs в момент burst около 13:38:42–13:38:43 (GMT+3) содержал только `POST /process` с 200. Ошибок, exception/traceback и рестарта приложения в момент probe не найдено. Старт нового контейнера в 13:49 относится к последующему автоматическому deploy документационного commit, а не к нагрузке.
-
-Это исключает наблюдаемое насыщение приложения и Redis как причину ошибок. Наиболее вероятен сбой на участке локальный генератор → сеть/ingress до регистрации запроса Railway, но точный участок доказать нельзя без сохранённых метрик генератора и трассировки соединений. Полный профиль 1000 RPS / 300 с после провала короткого probe не запускался, чтобы не расходовать trial-кредит на неподтверждённую сквозную конфигурацию.
-
-Smoke после probe (одиночные запросы):
-
-- `GET /healthz` → 200 `{"status":"ok"}`
-- `POST /process` → 200, маскирование, идемпотентный retry и exact unmask
-- `GET /metrics` → 200; синтетический payload и `payload_id` отсутствуют
-- невалидный `POST /process` → 422 без traceback
-- поиск синтетического payload и `payload_id` в Railway Logs → совпадений нет
-
-Сервис жив под лёгкой нагрузкой; устойчивый baseline на Railway **не подтверждён**.
-
----
-
-## 5. Сравнение с локальным baseline (справочно)
-
-Локальный прогон на машине разработки (не Railway, не официальный scoring):
-
-| Показатель | Локально |
+| Проверка | Вердикт |
 | --- | --- |
-| Окно | 300 с после 15 с прогрева |
-| Успешные baseline-операции | 300001 |
-| Успешный RPS | ≈ 1000.003 |
-| p50 / p95 / p99 / max | 3.78 / 21.78 / 57.15 / 286.37 мс |
-| Ошибки / 429 | 0 / 0 |
-| Workers | 8 |
-
-Локальный gate §7.1 — **pass**.
-
-Railway probe — **block**. Это разные окружения; локальный pass не переносится на deployed URL.
+| Функциональный smoke Railway | pass (отдельно подтверждён) |
+| Probe 100 RPS / 30 с после настройки VU | **pass** |
+| Полный §7.1 1000 RPS / 300 с на Railway | **не выполнен** → для заявления о 1000 RPS на deploy остаётся **block** |
+| Локальный §7.1 на dev-машине | pass (справочно; не Railway) |
 
 ---
 
-## 6. Рекомендации
+## 5. Следующий шаг
 
-1. Перед повтором сохранить CPU/RAM/сеть локального генератора и уменьшить `preAllocatedVUs` для короткого `RATE=100` probe; текущие 800 VU избыточны для такого профиля.
-2. Только при доказанном упоре в CPU/worker сравнить одну осторожную конфигурационную правку за раз; 4–8 workers на trial с лимитом 1 ГБ RAM не назначать без измерений.
-3. Повторить probe: `RATE=100`, baseline ≥30 с, целевой `http_req_failed == 0`.
-4. Только после зелёного probe — полный прогон `RATE=1000`, `BASELINE_DURATION=300s`, если тариф и ресурсы позволяют.
-5. Для формы сдачи URL сервиса валиден для smoke; **не** указывать Railway как доказательство 1000 RPS без повторного зелёного прогона.
+Повторить полный прогон:
+
+```bash
+docker run --rm -v "%cd%\scripts\load:/scripts" ^
+  -e BASE_URL=https://llm-proxy-production-84c7.up.railway.app ^
+  -e RATE=1000 -e WARMUP_DURATION=15s -e BASELINE_DURATION=300s ^
+  grafana/k6 run /scripts/mask_unmask.js
+```
+
+(при RATE≥1000 скрипт снова использует preAllocated 800 / max 5000)
 
 ---
 
-## 7. Итог одной строкой
+## 6. Итог одной строкой
 
-Deployed URL отвечает и маскирует ПД; командный нагрузочный gate §7.1 на Railway **не пройден** (ошибки уже на 100 RPS); полный 1000/300 с не выполнялся.
+Первый probe на Railway упал из‑за транспортных сбоев при пуле 800 VU; после `PRE_ALLOCATED_VUS=50` / `MAX_VUS=200` probe 100 RPS / 30 с прошёл без ошибок; полный 1000/300 с ещё не гоняли.

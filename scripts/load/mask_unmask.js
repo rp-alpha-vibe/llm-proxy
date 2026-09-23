@@ -11,6 +11,14 @@ const baseUrl = __ENV.BASE_URL || "http://host.docker.internal:8000";
 const warmupDuration = __ENV.WARMUP_DURATION || "15s";
 const baselineDuration = __ENV.BASELINE_DURATION || "300s";
 const rate = Number(__ENV.RATE || 1000);
+const baselinePreAllocatedVUs = Number(
+  __ENV.PRE_ALLOCATED_VUS || (rate >= 1000 ? 800 : Math.max(20, Math.min(100, rate))),
+);
+const baselineMaxVUs = Number(
+  __ENV.MAX_VUS || (rate >= 1000 ? 5000 : Math.max(100, baselinePreAllocatedVUs * 5)),
+);
+const warmupPreAllocatedVUs = Math.min(50, baselinePreAllocatedVUs);
+const warmupMaxVUs = Math.min(400, Math.max(50, baselineMaxVUs));
 
 const pending = {};
 
@@ -21,8 +29,8 @@ export const options = {
       rate: Math.max(1, Math.floor(rate / 5)),
       timeUnit: "1s",
       duration: warmupDuration,
-      preAllocatedVUs: 50,
-      maxVUs: 400,
+      preAllocatedVUs: warmupPreAllocatedVUs,
+      maxVUs: warmupMaxVUs,
       exec: "maskUnmask",
       tags: { phase: "warmup" },
     },
@@ -32,8 +40,8 @@ export const options = {
       timeUnit: "1s",
       duration: baselineDuration,
       startTime: warmupDuration,
-      preAllocatedVUs: 800,
-      maxVUs: 5000,
+      preAllocatedVUs: baselinePreAllocatedVUs,
+      maxVUs: baselineMaxVUs,
       exec: "maskUnmask",
       tags: { phase: "baseline" },
     },
