@@ -170,15 +170,15 @@ foreign session/consumer -> no disclosure
 
 ### Tasks
 
-- [ ] E4.1 Реализовать строгий request/response contract `POST /process`.
-- [ ] E4.2 Validation: invalid JSON, missing/wrong fields, bounded errors без raw payload/stack trace.
-- [ ] E4.3 Реализовать YAML `PolicyRegistry`.
-- [ ] E4.4 Реализовать `ConsumerResolver` как отдельную boundary.
-- [ ] E4.5 Не добавлять обязательный auth/system header в AlfaSonar contract без официального подтверждения.
-- [ ] E4.6 Disabled consumer => controlled rejection.
-- [ ] E4.7 Проверить policy isolation между systems.
-- [ ] E4.8 Добавить bounded concurrency gate skeleton и 429 + `Retry-After`.
-- [ ] E4.9 Integration tests полного HTTP mask -> unmask flow.
+- [x] E4.1 Реализовать строгий request/response contract `POST /process`.
+- [x] E4.2 Validation: invalid JSON, missing/wrong fields, bounded errors без raw payload/stack trace.
+- [x] E4.3 Реализовать YAML `PolicyRegistry`.
+- [x] E4.4 Реализовать `ConsumerResolver` как отдельную boundary.
+- [x] E4.5 Не добавлять обязательный auth/system header в AlfaSonar contract без официального подтверждения.
+- [x] E4.6 Disabled consumer => controlled rejection.
+- [x] E4.7 Проверить policy isolation между systems.
+- [x] E4.8 Добавить bounded concurrency gate skeleton и 429 + `Retry-After`.
+- [x] E4.9 Integration tests полного HTTP mask -> unmask flow.
 
 ### Acceptance
 

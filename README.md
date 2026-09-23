@@ -50,7 +50,7 @@ Baseline считается готовым только когда одновр�
 
 ## Запуск
 
-Требования: Python 3.12 и Docker Compose. Для stateful processing задайте `LLM_PROXY_ENCRYPTION_KEY`; без ключа Redis state store отказывает fail-closed.
+Требования: Python 3.12 и Docker Compose. Скопируйте `.env.example` в `.env`, задайте `LLM_PROXY_ENCRYPTION_KEY` длиной 16, 24 или 32 байта и запустите стек:
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -79,6 +79,10 @@ python scripts/verify.py
 
 CI использует ту же команду.
 
+## Политики потребителей
+
+Добавьте систему в `config/systems.example.yaml` под `systems` и задайте для неё `enabled`, `pii_types` и `allow_demask`. Потребитель runtime выбирается через `LLM_PROXY_DEFAULT_CONSUMER_ID`; официальный запрос `/process` не содержит `system_id` или обязательного auth header. Перезапустите приложение после изменения YAML; неизвестный или отключённый потребитель получает отказ, а policy и Redis-session остаются изолированными.
+
 ## Текущий этап
 
-E0–E3 завершены: каркас, Redis/Compose, typed settings, `healthz`, encrypted Redis state, ProcessService state machine, `verify` и CI реализованы. Публичный `POST /process`, consumer policy/auth, PII engine, quality/load baseline и submission readiness ещё не реализованы.
+E0–E4 и checkpoint M1 завершены. `POST /process` проходит policy и `ProcessService` до Redis: новый payload маскируется, повтор исходного текста возвращает ту же маску, точная маска восстанавливает исходный текст. Async-тесты запускаются через `pytest-asyncio`. Smoke `test_http_redis_mask_retry_and_exact_unmask` использует Redis по `LLM_PROXY_TEST_REDIS_URL` или `redis://127.0.0.1:6379/15` и пропускается, если Redis недоступен; пропуск не заменяет прогон на реальном Redis. Официальный способ допуска AlfaSonar остаётся открытой границей и блокером submission readiness. PII engine, quality/load baseline и submission packaging ещё в работе.

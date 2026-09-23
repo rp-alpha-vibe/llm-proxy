@@ -12,6 +12,8 @@ def test_settings_defaults_are_safe_for_local_startup() -> None:
     assert settings.session_ttl_seconds == 900
     assert settings.post_demask_ttl_seconds == 120
     assert settings.max_concurrency == 100
+    assert settings.default_consumer_id == "alfa_tester"
+    assert settings.overload_retry_after_seconds == 1
     assert settings.config_path == type(settings).model_fields["config_path"].default
 
 
@@ -26,6 +28,14 @@ def test_settings_read_prefixed_environment(monkeypatch: MonkeyPatch) -> None:
     assert settings.session_ttl_seconds == 42
     assert settings.encryption_key is not None
     assert settings.encryption_key.get_secret_value() == "synthetic-test-key"
+
+
+def test_empty_encryption_key_environment_is_missing(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROXY_ENCRYPTION_KEY", "")
+
+    settings = Settings.model_validate({})
+
+    assert settings.encryption_key is None
 
 
 def test_stateful_processing_requires_injected_encryption_key() -> None:

@@ -1,0 +1,126 @@
+from typing import Any
+
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from redis.exceptions import RedisError
+
+from llm_proxy.application.overload import ConcurrencyLimitExceeded
+from llm_proxy.application.process_service import (
+    DemaskNotAllowedError,
+    ProcessServiceError,
+    SessionStateError,
+)
+from llm_proxy.policies.loader import (
+    ConsumerNotAllowedError,
+    PolicyConfigurationError,
+    PolicyNotFoundError,
+)
+from llm_proxy.state.crypto import StateEncryptionError
+
+
+class APIError(Exception):
+    def __init__(
+        self,
+        status_code: int,
+        detail: str,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(detail)
+        self.status_code = status_code
+        self.detail = detail
+        self.headers = headers
+
+
+class ProcessRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    payload: str = Field(min_length=1, max_length=1_000_000)
+    payload_id: str = Field(min_length=1, max_length=256)
+
+    @field_validator("payload")
+    @classmethod
+    def payload_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("payload must not be blank")
+        return value
+
+    @field_validator("payload_id")
+    @classmethod
+    def payload_id_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("payload_id must not be blank")
+        return value.strip()
+
+
+class ProcessResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    result: str
+
+
+def create_process_router() -> APIRouter:
+    router = APIRouter()
+
+    @router.post("/process", response_model=ProcessResponse)
+    async def process(payload: ProcessRequest, request: Request) -> ProcessResponse:
+        try:
+            settings = request.app.state.settings
+            context = request.app.state.consumer_resolver.resolve(settings.default_consumer_id)
+            async with request.app.state.concurrency_gate.slot():
+                service = request.app.state.process_service
+                if service is None:
+                    raise APIError(503, "state unavailable")
+                result = await service.process(
+                    context,
+                    payload.payload_id,
+                    payload.payload,
+                )
+            return ProcessResponse(result=result.result)
+        except APIError:
+            raise
+        except ConcurrencyLimitExceeded as exc:
+            retry_after = str(request.app.state.concurrency_gate.retry_after_seconds)
+            raise APIError(
+                429,
+                "overloaded",
+                headers={"Retry-After": retry_after},
+            ) from exc
+        except (ConsumerNotAllowedError, PolicyNotFoundError):
+            raise APIError(403, "consumer not allowed") from None
+        except PolicyConfigurationError:
+            raise APIError(503, "policy unavailable") from None
+        except DemaskNotAllowedError:
+            raise APIError(403, "demask not allowed") from None
+        except (
+            SessionStateError,
+            ProcessServiceError,
+            StateEncryptionError,
+            RedisError,
+            ConnectionError,
+            TimeoutError,
+        ):
+            raise APIError(503, "state unavailable") from None
+        except Exception:
+            raise APIError(500, "internal error") from None
+
+    return router
+
+
+def validation_error_handler(_: Request, __: Any) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": "invalid request"})
+
+
+def api_error_handler(_: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, APIError):
+        return internal_error_handler(_, exc)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers,
+    )
+
+
+def internal_error_handler(_: Request, __: Exception) -> JSONResponse:
+    return JSONResponse(status_code=500, content={"detail": "internal error"})

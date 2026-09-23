@@ -98,6 +98,7 @@ Content-Type: application/json
 ```
 
 Body и response строго соответствуют `docs/REQUIREMENTS.md`, §3.
+E4 не добавляет обязательный auth/system header: consumer выбирается deployment setting `LLM_PROXY_DEFAULT_CONSUMER_ID` из ограниченного YAML-списка. Это deployment-routing assumption, а не authentication; доступ endpoint должен ограничиваться сетевой границей deployment. До подтверждения способа допуска AlfaSonar это не считается решением внешнего auth-контракта.
 Нельзя добавлять обязательные request fields/headers, которых нет в официальном контракте.
 
 ### Служебные endpoints
@@ -387,7 +388,7 @@ Placeholder strategy является надёжным вариантом для
 Retry-After: <bounded value>
 ```
 
-При локальном baseline 1000 RPS 429 не допускается; overload profile проверяется отдельно.
+`ConcurrencyGate` ограничивает hot path внутри каждого Uvicorn process; агрегированный лимит нескольких workers подбирается нагрузочным профилем E13. При локальном baseline 1000 RPS 429 не допускается; overload profile проверяется отдельно.
 
 ### Redis unavailable
 
@@ -501,7 +502,9 @@ src/llm_proxy/
 ├── api/
 │   └── process.py
 ├── application/
-│   └── process_service.py
+│   ├── process_service.py
+│   ├── overload.py
+│   └── stubs.py
 ├── detection/
 │   ├── models.py
 │   ├── engine.py
@@ -586,7 +589,7 @@ scripts/
 
 1. точный competition mask format;
 2. официальный span-based scoring;
-3. способ идентификации/допуска AlfaSonar;
+3. способ идентификации/допуска AlfaSonar; baseline использует только `LLM_PROXY_DEFAULT_CONSUMER_ID` и не выдумывает обязательный request header.
 4. реальный distribution payload sizes;
 5. внутренние банковские ИБ/compliance criteria.
 
