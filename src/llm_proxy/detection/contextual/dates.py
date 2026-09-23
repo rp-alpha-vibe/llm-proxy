@@ -6,7 +6,8 @@ from llm_proxy.detection.contextual.common import confirmed, label_distance
 from llm_proxy.detection.models import Detection, PiiType
 
 _NUMERIC = re.compile(
-    r"(?<!\d)(?:(\d{1,2})[./-](\d{1,2})[./-](\d{4})|(\d{4})-(\d{2})-(\d{2}))(?!\d)"
+    r"(?<!\d)(?:(\d{1,2})[./-](\d{1,2})[./-](\d{4})|"
+    r"(\d{4})[./-](\d{2})[./-](\d{2}))(?!\d)"
 )
 _TEXTUAL = re.compile(
     r"(?<!\d)(\d{1,2})\s+"

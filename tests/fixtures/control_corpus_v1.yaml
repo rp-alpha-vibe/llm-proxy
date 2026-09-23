@@ -1,0 +1,336 @@
+version: 1
+note: Prepared before detector changes for TASK_IMPROVE_PII_DETECTION. Expected spans are hand-authored
+  synthetic values; offsets resolved from those values.
+cases:
+- id: ctrl-fio-birth
+  text: 'Анкета. ФИО: Орлова Нина Марковна; дата рождения: 15.04.1988;'
+  expected:
+  - type: person
+    start: 13
+    end: 33
+  - type: birth_date
+    start: 50
+    end: 60
+- id: ctrl-issuer-variants
+  text: 'кем выдан документ: МВД по г. Северску; паспорт выдан: ОУФМС района Тест;'
+  expected:
+  - type: passport_issuer
+    start: 20
+    end: 38
+  - type: passport_issuer
+    start: 55
+    end: 72
+- id: ctrl-address-block
+  text: 'адрес — страна: Демонстрация, индекс: 111222, город: Примерск, улица: Садовая, дом: 10A, квартира:
+    12/1'
+  expected:
+  - type: address_country
+    start: 16
+    end: 28
+  - type: address_postal_code
+    start: 38
+    end: 44
+  - type: address_city
+    start: 53
+    end: 61
+  - type: address_street
+    start: 70
+    end: 77
+  - type: address_house
+    start: 84
+    end: 87
+  - type: address_apartment
+    start: 99
+    end: 103
+- id: ctrl-address-residence-label
+  text: 'адрес проживания: страна: Мир, индекс: 222333, город: Восток, улица: Мира, дом: T-5, квартира:
+    3'
+  expected:
+  - type: address_country
+    start: 26
+    end: 29
+  - type: address_postal_code
+    start: 39
+    end: 45
+  - type: address_city
+    start: 54
+    end: 60
+  - type: address_street
+    start: 69
+    end: 73
+  - type: address_house
+    start: 80
+    end: 83
+  - type: address_apartment
+    start: 95
+    end: 96
+- id: ctrl-inn-invalid-labeled
+  text: 'ИНН: 1234567890 (проверка);'
+  expected:
+  - type: inn
+    start: 5
+    end: 15
+- id: ctrl-card-invalid-labeled
+  text: 'номер платёжной банковской карты: 4111 1111 1111 1112 (тест);'
+  expected:
+  - type: card
+    start: 34
+    end: 53
+- id: ctrl-cardholder-latin
+  text: 'имя держателя карты: DEMOHOLD99 CARDNAME'
+  expected:
+  - type: cardholder
+    start: 21
+    end: 40
+- id: ctrl-dates-formats
+  text: 'дата рождения: 2001/07/09; дата выдачи паспорта: 09-07-2021;'
+  expected:
+  - type: birth_date
+    start: 15
+    end: 25
+  - type: passport_issue_date
+    start: 49
+    end: 59
+- id: ctrl-dates-textual
+  text: 'дата рождения: 3 марта 1999 года; дата выдачи паспорта: 12 мая 2018 г;'
+  expected:
+  - type: birth_date
+    start: 15
+    end: 32
+  - type: passport_issue_date
+    start: 56
+    end: 69
+- id: ctrl-verbal-birth
+  text: 'дата рождения: первого мая тысяча девятьсот девяносто года;'
+  expected:
+  - type: birth_date
+    start: 15
+    end: 58
+- id: ctrl-birth-place-comma
+  text: 'место рождения: посёлок Северный, Образцовая область;'
+  expected:
+  - type: birth_place
+    start: 16
+    end: 52
+- id: ctrl-citizenship-free
+  text: 'гражданство: Образцовая республика (фиктивное);'
+  expected:
+  - type: citizenship
+    start: 13
+    end: 34
+- id: ctrl-passport-issuer-labeled
+  text: 'орган, выдавший паспорт: Тестовый отдел №7 города Пример;'
+  expected:
+  - type: passport_issuer
+    start: 25
+    end: 56
+- id: ctrl-field-order-swapped
+  text: 'ИНН: 000000000012; ФИО: Смирнов Олег Петрович; гражданство: РФ; дата рождения: 01.01.1980;'
+  expected:
+  - type: inn
+    start: 5
+    end: 17
+  - type: person
+    start: 24
+    end: 45
+  - type: citizenship
+    start: 60
+    end: 62
+  - type: birth_date
+    start: 79
+    end: 89
+- id: ctrl-mixed-case-labels
+  text: 'ФИО: Ким Аида; ДАТА РОЖДЕНИЯ: 1990-12-01; ГРАЖДАНСТВО: рф;'
+  expected:
+  - type: person
+    start: 5
+    end: 13
+  - type: birth_date
+    start: 30
+    end: 40
+  - type: citizenship
+    start: 55
+    end: 57
+- id: ctrl-two-persons-free
+  text: клиента зовут Иван Тестов и Мария Примерова.
+  expected:
+  - type: person
+    start: 14
+    end: 25
+  - type: person
+    start: 28
+    end: 43
+- id: ctrl-contact-person
+  text: контактное лицо Пётр Демонстрационный, телефон +7 900 000-11-22
+  expected:
+  - type: person
+    start: 16
+    end: 37
+- id: ctrl-overlap-dates
+  text: 'дата рождения: 10.10.1990; дата выдачи паспорта: 10.10.2010;'
+  expected:
+  - type: birth_date
+    start: 15
+    end: 25
+  - type: passport_issue_date
+    start: 49
+    end: 59
+- id: ctrl-overlap-docs
+  text: 'серия и номер паспорта: 4510 123456; серия и номер водительского удостоверения: 7711 654321;'
+  expected:
+  - type: passport
+    start: 24
+    end: 35
+  - type: driver_license
+    start: 80
+    end: 91
+- id: ctrl-fio-cardholder-pair
+  text: 'ФИО: Белова Анна Сергеевна; имя держателя карты: BELOVA ANNA;'
+  expected:
+  - type: person
+    start: 5
+    end: 26
+  - type: cardholder
+    start: 49
+    end: 60
+- id: ctrl-short-partial
+  text: 'email: sample.user@example.test; номер телефона: +7 911 222-33-44'
+  expected:
+  - type: email
+    start: 7
+    end: 31
+  - type: phone
+    start: 49
+    end: 65
+- id: ctrl-cvv-pin
+  text: 'CVV-код: 321; PIN-код карты: 9988;'
+  expected:
+  - type: cvv
+    start: 9
+    end: 12
+  - type: pin
+    start: 29
+    end: 33
+- id: ctrl-full-form-a
+  text: 'ФИО: Козлова Елена Викторовна; дата рождения: 22.11.1985; место рождения: г. Пример, Крайний
+    край; серия и номер паспорта: 5011 778899; гражданство: Примерляндия (фиктивное); орган, выдавший
+    паспорт: УВД г. Примера; код подразделения: 500-111; дата выдачи паспорта: 22.11.2005; серия и номер
+    водительского удостоверения: 9910 112233; адрес — страна: Примерляндия, индекс: 500111, город: Пример,
+    улица: Лесная, дом: 7Б, квартира: 15; email: elena.koz@example.test; номер телефона: +7 900 111-22-33;
+    ИНН: 500111223344 (фиктивный); номер платёжной банковской карты: 4000 0000 0000 0002 (невалидный);
+    CVV-код: 111; PIN-код карты: 2222; имя держателя карты: KOZLOVA ELENA.'
+  expected:
+  - type: person
+    start: 5
+    end: 29
+  - type: birth_date
+    start: 46
+    end: 56
+  - type: birth_place
+    start: 74
+    end: 97
+  - type: passport
+    start: 123
+    end: 134
+  - type: citizenship
+    start: 149
+    end: 161
+  - type: passport_issuer
+    start: 200
+    end: 214
+  - type: passport_division_code
+    start: 235
+    end: 242
+  - type: passport_issue_date
+    start: 266
+    end: 276
+  - type: driver_license
+    start: 321
+    end: 332
+  - type: address_country
+    start: 350
+    end: 362
+  - type: address_postal_code
+    start: 372
+    end: 378
+  - type: address_city
+    start: 387
+    end: 393
+  - type: address_street
+    start: 402
+    end: 408
+  - type: address_house
+    start: 415
+    end: 417
+  - type: address_apartment
+    start: 429
+    end: 431
+  - type: email
+    start: 440
+    end: 462
+  - type: phone
+    start: 480
+    end: 496
+  - type: inn
+    start: 503
+    end: 515
+  - type: card
+    start: 563
+    end: 582
+  - type: cvv
+    start: 606
+    end: 609
+  - type: pin
+    start: 626
+    end: 630
+  - type: cardholder
+    start: 653
+    end: 666
+- id: neg-bare-long-number
+  text: код заказа 123456789012 и номер 4111222233334444 без меток
+  expected: []
+- id: neg-ordinary-date
+  text: встреча назначена на 12.03.2024 в офисе
+  expected: []
+- id: neg-bank-address
+  text: 'адрес отделения Банка: г. Москва, ул. Тверская, д. 1'
+  expected: []
+- id: neg-public-person
+  text: Александр Пушкин написал стихотворение
+  expected: []
+- id: neg-editorial-contacts
+  text: 'Контакты редакции: Российский Красный Крест'
+  expected: []
+- id: neg-fio-does-not-span-next
+  text: 'ФИО: Иванов Иван; гражданство: Россия;'
+  expected:
+  - type: person
+    start: 5
+    end: 16
+  - type: citizenship
+    start: 31
+    end: 37
+- id: neg-unknown-label
+  text: 'любимый цвет: синий; код склада: 9988776655'
+  expected: []
+- id: free-client-name
+  text: клиента зовут Сергей Примерный.
+  expected:
+  - type: person
+    start: 14
+    end: 30
+- id: free-birth-context
+  text: родился 6 июня 1990 года в семье
+  expected:
+  - type: birth_date
+    start: 8
+    end: 19
+- id: free-issuer
+  text: паспорт выдан 01.02.2015 ОВД Тестового района.
+  expected:
+  - type: passport_issue_date
+    start: 14
+    end: 24
+  - type: passport_issuer
+    start: 25
+    end: 45

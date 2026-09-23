@@ -37,7 +37,10 @@ class PassportDetector:
                 start, end = match.span()
                 if any(start < right and left < end for left, right in covered):
                     continue
-                if keyword_distance(text, start, end, _PASSPORT_KEYWORDS) is None:
+                if (
+                    keyword_distance(text, start, end, _PASSPORT_KEYWORDS, side="left") is None
+                    and keyword_distance(text, start, end, _PASSPORT_KEYWORDS) is None
+                ):
                     continue
                 if pattern is _COMPACT and _closer_keyword(
                     text,
@@ -69,8 +72,8 @@ def _closer_keyword(
 
 
 def _prefers_passport(text: str, start: int, end: int) -> bool:
-    passport = keyword_distance(text, start, end, _PASSPORT_KEYWORDS)
-    driver = keyword_distance(text, start, end, _DRIVER_KEYWORDS)
+    passport = keyword_distance(text, start, end, _PASSPORT_KEYWORDS, side="left")
+    driver = keyword_distance(text, start, end, _DRIVER_KEYWORDS, side="left")
     if driver is None:
         return True
     if passport is None:

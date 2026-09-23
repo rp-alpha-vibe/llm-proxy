@@ -19,9 +19,7 @@ _GENERIC_ADDRESS = re.compile(rf"(?<![A-Za-z{CYR}])адрес\s*:", re.IGNORECAS
 _DELIVERY = re.compile(r"доставк|получател", re.IGNORECASE)
 _ORG = re.compile(r"банк|отделен|филиал|офис", re.IGNORECASE)
 _CLAUSE_LIMIT = 160
-_POSTAL_CITY = re.compile(
-    rf"(?<!\d)\d{{6}}\s*,\s*(?P<city>[{CYR_UPPER}][{CYR_LOWER}-]+)(?=\s*,)"
-)
+_POSTAL_CITY = re.compile(rf"(?<!\d)\d{{6}}\s*,\s*(?P<city>[{CYR_UPPER}][{CYR_LOWER}-]+)(?=\s*,)")
 _PARTS: tuple[tuple[PiiType, re.Pattern[str]], ...] = (
     (PiiType.ADDRESS_POSTAL_CODE, re.compile(r"(?<!\d)\d{6}(?!\d)")),
     (

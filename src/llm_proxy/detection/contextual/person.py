@@ -8,6 +8,7 @@ from llm_proxy.detection.contextual.common import (
     confirmed,
     label_distance,
 )
+from llm_proxy.detection.contextual.labeled import field_start_boundary
 from llm_proxy.detection.models import Detection, PiiType
 
 _NAME = re.compile(
@@ -39,9 +40,18 @@ class PersonDetector:
     ) -> Sequence[Detection]:
         if PiiType.PERSON not in enabled_types:
             return ()
+        # Questionnaire `ФИО:` fields are owned by QuestionnaireDetector; keep free-form paths.
+        if ":" in text and ";" in text:
+            lowered = text.casefold()
+            form_only = (
+                "фио:" in lowered and "зовут" not in lowered and ("контактное лицо" not in lowered)
+            )
+            if form_only:
+                return ()
+        field_aware = ";" in text
         found: list[Detection] = []
         for match in _NAME.finditer(text):
-            if not _owned_by_person(text, match.start(), match.end()):
+            if not _owned_by_person(text, match.start(), match.end(), field_aware=field_aware):
                 continue
             found.append(
                 confirmed(
@@ -63,9 +73,19 @@ class CardholderDetector:
     ) -> Sequence[Detection]:
         if PiiType.CARDHOLDER not in enabled_types:
             return ()
+        if ":" in text:
+            lowered = text.casefold()
+            if (
+                "имя держателя карты:" in lowered
+                or "держатель карты:" in lowered
+                or "cardholder:" in lowered
+                or "имя на карте:" in lowered
+            ):
+                return ()
+        field_aware = ";" in text
         found: list[Detection] = []
         for match in _NAME.finditer(text):
-            if not _owned_by_cardholder(text, match.start(), match.end()):
+            if not _owned_by_cardholder(text, match.start(), match.end(), field_aware=field_aware):
                 continue
             found.append(
                 confirmed(
@@ -79,25 +99,38 @@ class CardholderDetector:
         return tuple(found)
 
 
-def _owned_by_person(text: str, start: int, end: int) -> bool:
-    person = label_distance(text, start, end, _PERSON)
-    contact_person = label_distance(text, start, end, _CONTACT_PERSON)
+def _field_slice(text: str, start: int, end: int, *, field_aware: bool) -> tuple[str, int, int]:
+    """Restrict ownership checks to the current `;`-separated field when present."""
+    if not field_aware:
+        return text, start, end
+    field_start = field_start_boundary(text, start)
+    field_end = text.find(";", end)
+    if field_end < 0:
+        field_end = len(text)
+    return text[field_start:field_end], start - field_start, end - field_start
+
+
+def _owned_by_person(text: str, start: int, end: int, *, field_aware: bool) -> bool:
+    slice_text, local_start, local_end = _field_slice(text, start, end, field_aware=field_aware)
+    person = label_distance(slice_text, local_start, local_end, _PERSON)
+    contact_person = label_distance(slice_text, local_start, local_end, _CONTACT_PERSON)
     if person is None or (contact_person is not None and contact_person < person):
         person = contact_person
     if person is None:
-        contacts = label_distance(text, start, end, _CONTACTS)
-        detail_start = max(0, start - 48)
-        detail_end = min(len(text), end + 80)
-        if contacts is None or _CONTACT_DETAIL.search(text, detail_start, detail_end) is None:
+        contacts = label_distance(slice_text, local_start, local_end, _CONTACTS)
+        detail_start = max(0, local_start - 48)
+        detail_end = min(len(slice_text), local_end + 80)
+        if contacts is None or _CONTACT_DETAIL.search(slice_text, detail_start, detail_end) is None:
             return False
         person = contacts
-    cardholder = label_distance(text, start, end, _CARDHOLDER)
+    cardholder = label_distance(slice_text, local_start, local_end, _CARDHOLDER)
     return cardholder is None or person <= cardholder
 
 
-def _owned_by_cardholder(text: str, start: int, end: int) -> bool:
-    cardholder = label_distance(text, start, end, _CARDHOLDER)
+def _owned_by_cardholder(text: str, start: int, end: int, *, field_aware: bool) -> bool:
+    slice_text, local_start, local_end = _field_slice(text, start, end, field_aware=field_aware)
+    cardholder = label_distance(slice_text, local_start, local_end, _CARDHOLDER)
     if cardholder is None:
         return False
-    person = label_distance(text, start, end, _PERSON)
+    person = label_distance(slice_text, local_start, local_end, _PERSON)
     return person is None or cardholder < person

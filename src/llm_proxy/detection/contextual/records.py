@@ -38,7 +38,8 @@ _BIRTH_PLACE = re.compile(
 _PUBLIC_FIGURE = re.compile(r"пушкин|толст|лермонтов|достоевск|гогол|чехов", re.IGNORECASE)
 _CLIENT = re.compile(r"клиент|заявител|фио", re.IGNORECASE)
 _ISSUER = re.compile(
-    rf"(?:кем выдан|паспорт\s+выдан(?:\u0430|\u043e)?)\s*[:\-]?\s*"
+    rf"(?:кем выдан(?:\s+документ)?|паспорт\s+выдан(?:\u0430|\u043e)?|орган,\s*выдавший\s+паспорт)"
+    rf"\s*[:\-]?\s*"
     rf"(?:\d{{1,2}}[./-]\d{{1,2}}[./-]\d{{4}}\s+)?"
     rf"([{CYR_UPPER}][{CYR}0-9 .\u2116-]{{2,80}})",
     re.IGNORECASE,
@@ -52,6 +53,9 @@ class CitizenshipDetector:
         enabled_types: Collection[PiiType],
     ) -> Sequence[Detection]:
         if PiiType.CITIZENSHIP not in enabled_types:
+            return ()
+        # Labeled questionnaire forms are handled by QuestionnaireDetector.
+        if ":" in text and "гражданство:" in text.casefold():
             return ()
         found: list[Detection] = []
         for match in _CITIZENSHIP_LABEL.finditer(text):
@@ -70,6 +74,8 @@ class BirthPlaceDetector:
     ) -> Sequence[Detection]:
         if PiiType.BIRTH_PLACE not in enabled_types:
             return ()
+        if ":" in text and "место рождения:" in text.casefold():
+            return ()
         found: list[Detection] = []
         for match in _BIRTH_PLACE.finditer(text):
             start, end = trim_span(text, match.start(1), match.end(1))
@@ -87,6 +93,14 @@ class PassportIssuerDetector:
     ) -> Sequence[Detection]:
         if PiiType.PASSPORT_ISSUER not in enabled_types:
             return ()
+        if ":" in text:
+            lowered = text.casefold()
+            if (
+                "орган, выдавший паспорт:" in lowered
+                or "кем выдан документ:" in lowered
+                or "паспорт выдан:" in lowered
+            ):
+                return ()
         found: list[Detection] = []
         for match in _ISSUER.finditer(text):
             start, end = trim_span(text, match.start(1), match.end(1))

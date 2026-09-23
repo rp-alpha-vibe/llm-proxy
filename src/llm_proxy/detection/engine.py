@@ -39,12 +39,9 @@ class PiiEngine:
                 if detection.type not in enabled or detection.type not in registration.types:
                     continue
                 start, end = view.to_original_span(detection.start, detection.end)
-                candidates.append(
-                    (
-                        detection.model_copy(update={"start": start, "end": end}),
-                        registration.priority,
-                    )
-                )
+                if start != detection.start or end != detection.end:
+                    detection = detection.model_copy(update={"start": start, "end": end})
+                candidates.append((detection, registration.priority))
 
         confirmed = self._context_resolver.resolve(view.original, candidates)
         return self._overlap_resolver.resolve(confirmed)

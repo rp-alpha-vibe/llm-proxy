@@ -26,12 +26,14 @@ class DriverLicenseDetector:
                 start, end = match.span()
                 if any(start < right and left < end for left, right in seen):
                     continue
-                driver = keyword_distance(text, start, end, _DRIVER_KEYWORDS)
-                passport = keyword_distance(text, start, end, _PASSPORT_KEYWORDS)
+                driver = keyword_distance(text, start, end, _DRIVER_KEYWORDS, side="left")
+                passport = keyword_distance(text, start, end, _PASSPORT_KEYWORDS, side="left")
                 if driver is None or (passport is not None and passport <= driver):
                     continue
                 if pattern is _COMPACT:
-                    inn = keyword_distance(text, start, end, _INN_KEYWORDS, whole_word=True)
+                    inn = keyword_distance(
+                        text, start, end, _INN_KEYWORDS, whole_word=True, side="left"
+                    )
                     if inn is not None and inn < driver:
                         continue
                 found.append(make_detection(PiiType.DRIVER_LICENSE, start, end, "driver-license"))

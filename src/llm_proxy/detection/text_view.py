@@ -1,7 +1,9 @@
+import re
 from dataclasses import dataclass
 from itertools import pairwise
 
 _INVISIBLE = frozenset("\u00ad\u200b\u200c\u200d\ufeff")
+_INVISIBLE_RE = re.compile("[\u00ad\u200b\u200c\u200d\ufeff]")
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +29,7 @@ class TextView:
     def from_text(text: str) -> "TextView":
         if not isinstance(text, str):
             raise TypeError("text must be a string")
-        if not any(char in _INVISIBLE for char in text):
+        if _INVISIBLE_RE.search(text) is None:
             return TextView(text, text, None)
 
         characters: list[str] = []

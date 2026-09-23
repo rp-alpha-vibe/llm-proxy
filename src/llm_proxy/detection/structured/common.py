@@ -30,15 +30,29 @@ def keyword_distance(
     *,
     window: int = 48,
     whole_word: bool = False,
+    side: str = "both",
 ) -> int | None:
-    left = max(0, start - window)
-    right = min(len(text), end + window)
+    if side == "left":
+        left = max(0, start - window)
+        right = start
+    elif side == "right":
+        left = end
+        right = min(len(text), end + window)
+    else:
+        left = max(0, start - window)
+        right = min(len(text), end + window)
+    if left >= right:
+        return None
     window_text = text[left:right]
     folded = window_text.casefold()
     if len(folded) != len(window_text):
         folded = text.casefold()
-        left = max(0, start - window)
-        right = min(len(folded), end + window)
+        left = max(0, start - window) if side != "right" else end
+        right = min(len(folded), end + window) if side != "left" else start
+        if side == "left":
+            right = start
+        elif side == "right":
+            left = end
         span_start = start
         span_end = end
         search_from = left
