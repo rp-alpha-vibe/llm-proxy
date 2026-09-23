@@ -73,14 +73,14 @@ def expected_fields(line: str) -> list[tuple[str, str, int, int]]:
     """Parse labels from the user's fixture without guessing unlabelled values."""
     expected = []
     for label, kind in BASIC.items():
-        match = re.search(r"(?:^|;\\s*|:\\s*)" + re.escape(label) + r":\\s*([^;]+)", line)
+        match = re.search(r"(?:^|;\s*|:\s*)" + re.escape(label) + r":\s*([^;]+)", line)
         if not match:
             raise AssertionError(f"Missing labelled field {label}")
         raw = match.group(1)
         start = match.start(1)
         value = raw.strip().rstrip(".")
         if kind == "birth_place":
-            city = re.search(r"город\\s+([А-ЯЁа-яё-]+)", raw)
+            city = re.search(r"город\s+([А-ЯЁа-яё-]+)", raw)
             if city is None:
                 raise AssertionError("Birth place has no city")
             start = match.start(1) + city.start(1)
@@ -93,13 +93,13 @@ def expected_fields(line: str) -> list[tuple[str, str, int, int]]:
             value = value.split(" (", 1)[0]
         expected.append((kind, value, start, start + len(value)))
 
-    address = re.search(r"адрес — страна:\\s*([^;]+)", line)
+    address = re.search(r"адрес — страна:\s*([^;]+)", line)
     if address is None:
         raise AssertionError("Missing address")
     clause = address.group(1)
     parts = re.fullmatch(
-        r"(.+?), индекс: (\\d{6}), город: ([^,]+), улица: ([^,]+), "
-        r"дом: ([^,]+), квартира: (\\d+)",
+        r"(.+?), индекс: (\d{6}), город: ([^,]+), улица: ([^,]+), "
+        r"дом: ([^,]+), квартира: (\d+)",
         clause,
     )
     if parts is None:
@@ -143,7 +143,7 @@ async def test_user_supplied_200_requests() -> None:
     total_detected = 0
 
     for line in lines:
-        number_match = re.search(r"ТЕСТОВЫЙ ЗАПРОС №(\\d+)", line)
+        number_match = re.search(r"ТЕСТОВЫЙ ЗАПРОС №(\d+)", line)
         assert number_match
         number = int(number_match.group(1))
         fields = expected_fields(line)
