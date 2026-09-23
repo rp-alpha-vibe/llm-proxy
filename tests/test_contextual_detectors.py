@@ -393,6 +393,14 @@ def test_free_text_multiword_city_and_street() -> None:
         (PiiType.ADDRESS_BUILDING, "8"),
         (PiiType.ADDRESS_UNIT, "4"),
     ]
+    assert _found(
+        "адрес проживания: \u0433. Нижний Новгород, ул. Большая Никитская, дом 1, квартира 2."
+    ) == [
+        (PiiType.ADDRESS_CITY, "\u0433. Нижний Новгород"),
+        (PiiType.ADDRESS_STREET, "ул. Большая Никитская"),
+        (PiiType.ADDRESS_BUILDING, "1"),
+        (PiiType.ADDRESS_UNIT, "2"),
+    ]
 
 
 def test_free_text_address_stops_at_sentence_boundary() -> None:
@@ -419,14 +427,21 @@ def test_free_text_person_recipient_variants() -> None:
     assert _found("Курьерская доставка, получатель Новикова Алексей Примеровна") == [
         (PiiType.PERSON, "Новикова Алексей Примеровна")
     ]
-    # Bare recipient without delivery/order/colon is not enough.
-    assert _found("Получатель Сидоров Пётр Иванович") == []
+    # Получатель immediately before a name acts as a label (no delivery required).
+    assert _found("Получатель Сидоров Пётр Иванович") == [(PiiType.PERSON, "Сидоров Пётр Иванович")]
 
 
 def test_free_text_recipient_award_is_not_person_context() -> None:
     assert _found("Получатель премии Александр Пушкин выступил на сцене.") == []
     assert _found("Получатель награды Мария Тестова получила диплом.") == []
     assert _found("Получатель ордена Пётр Примерский присутствовал на церемонии.") == []
+    assert (
+        _found(
+            "Доставка книг обсуждалась отдельно. "
+            "Получатель гранта Александр Пушкин выступил на сцене."
+        )
+        == []
+    )
     assert _full_found("Сегодня обсуждали роман Александра Пушкина.") == []
 
 

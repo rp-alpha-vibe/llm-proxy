@@ -24,11 +24,14 @@ _RECIPIENT_STRONG = re.compile(
     r"получател(?:ь|я|ю|ем)?\s*(?::|\s+заказа\b)",
     re.IGNORECASE,
 )
+# Bare label immediately before a capitalized name (not award/grant nouns).
+_RECIPIENT_BEFORE_NAME = re.compile(rf"(?:[Пп]олучател(?:ь|я|ю|ем)?)(?=\s+[{CYR_UPPER}A-Z])")
 _RECIPIENT_BARE = re.compile(
-    r"получател(?:ь|я|ю|ем)?(?!\s+(?:премии|награды|ордена)\b)",
+    r"получател(?:ь|я|ю|ем)?(?!\s+(?:премии|награды|ордена|гранта)\b)",
     re.IGNORECASE,
 )
 _DELIVERY = re.compile(r"достав", re.IGNORECASE)
+_SENTENCE_BREAK = re.compile(rf"\.(?=\s+[{CYR_UPPER}A-Z]|\s*$)|;")
 _CONTACT_PERSON = re.compile(r"контактное\s+лицо", re.IGNORECASE)
 _CONTACTS = re.compile(r"контакт(?:ы|ные\s+данные)", re.IGNORECASE)
 _CONTACT_DETAIL = re.compile(
@@ -147,20 +150,34 @@ def _field_slice(text: str, start: int, end: int, *, field_aware: bool) -> tuple
 
 
 def _recipient_distance(text: str, start: int, end: int) -> int | None:
-    """Confirm recipient labels; bare 'Получатель' needs delivery context."""
+    """Confirm recipient labels; bare 'Получатель' needs same-sentence delivery."""
     strong = label_distance(text, start, end, _RECIPIENT_STRONG)
     if strong is not None:
         return strong
+    before_name = label_distance(text, start, end, _RECIPIENT_BEFORE_NAME)
+    if before_name is not None:
+        return before_name
     bare = label_distance(text, start, end, _RECIPIENT_BARE)
     if bare is None:
         return None
-    left = max(0, start - 160)
-    right = min(len(text), end + 48)
-    if _DELIVERY.search(text, left, right) is not None:
-        return bare
-    if len(text) <= 400 and _DELIVERY.search(text) is not None:
+    sent_start, sent_end = _sentence_bounds(text, start)
+    if _DELIVERY.search(text, sent_start, sent_end) is not None:
         return bare
     return None
+
+
+def _sentence_bounds(text: str, index: int) -> tuple[int, int]:
+    """Inclusive-exclusive bounds of the sentence containing index."""
+    start = 0
+    for match in _SENTENCE_BREAK.finditer(text, 0, index):
+        start = match.end()
+    end = len(text)
+    following = _SENTENCE_BREAK.search(text, index)
+    if following is not None:
+        end = following.start()
+    while start < end and text[start] in " \t":
+        start += 1
+    return start, end
 
 
 def _owned_by_person(text: str, start: int, end: int, *, field_aware: bool) -> bool:

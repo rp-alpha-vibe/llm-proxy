@@ -34,12 +34,13 @@ _HOUSE_OR_UNIT = re.compile(
     rf"(?<![{CYR}])(?:\u0434\.|дом|кв\.|квартира)\b",
     re.IGNORECASE,
 )
-_SENTENCE_STOP = re.compile(rf"\.(?=\s+[{CYR_UPPER}A-Z]|\s*$)|;")
+_ABBREV_DOT = frozenset({"\u0433", "\u0443\u043b", "\u0434", "\u043a\u0432"})
 _BARE_LABEL_STOP = re.compile(
     rf"(?<![A-Za-z{CYR}])(?:индекс|получател|телефон|контактн|email|e-mail|фио)\b",
     re.IGNORECASE,
 )
-_BARE_SEGMENT = re.compile(rf"[{CYR_UPPER}][{CYR_LOWER}-]+(?:[ \t]+[{CYR_UPPER}][{CYR_LOWER}-]+)*")
+_BARE_NAME = rf"[{CYR_UPPER}][{CYR_LOWER}-]+(?:[ \t]+[{CYR_UPPER}][{CYR_LOWER}-]+)*"
+_BARE_SEGMENT = re.compile(_BARE_NAME)
 _SKIP_SEGMENT = re.compile(
     r"^(?:\u0434\.|дом|кв\.|квартира|индекс)\b",
     re.IGNORECASE,
@@ -90,14 +91,14 @@ _PARTS: tuple[tuple[PiiType, re.Pattern[str]], ...] = (
     (
         PiiType.ADDRESS_CITY,
         re.compile(
-            rf"(?<![{CYR}])(?:{G_DOT}|город)\s*[{CYR_UPPER}][{CYR_LOWER}-]+",
+            rf"(?<![{CYR}])(?:{G_DOT}|город)\s*{_BARE_NAME}",
             re.IGNORECASE,
         ),
     ),
     (
         PiiType.ADDRESS_STREET,
         re.compile(
-            rf"(?<![{CYR}])(?:ул\.|улица)\s*[{CYR_UPPER}][{CYR_LOWER}-]+",
+            rf"(?<![{CYR}])(?:ул\.|улица)\s*{_BARE_NAME}",
             re.IGNORECASE,
         ),
     ),
@@ -265,8 +266,20 @@ def _extend_bare_city_street(
 def _bare_region_end(clause: str) -> int:
     """Stop bare city/street search at sentence end or the next field label."""
     candidates = [len(clause)]
-    for match in _SENTENCE_STOP.finditer(clause):
-        candidates.append(match.start())
+    for match in re.finditer(rf"\.(?=\s+[{CYR_UPPER}A-Z]|\s*$)|;", clause):
+        if match.group(0) == ";" or not _is_abbreviation_dot(clause, match.start()):
+            candidates.append(match.start())
     for match in _BARE_LABEL_STOP.finditer(clause):
         candidates.append(match.start())
     return min(candidates)
+
+
+def _is_abbreviation_dot(text: str, dot_pos: int) -> bool:
+    """True for city/street/house abbreviations so dots are not sentence ends."""
+    start = dot_pos
+    while start > 0 and dot_pos - start < 3:
+        ch = text[start - 1]
+        if not (ch.isascii() and ch.isalpha()) and not ("\u0400" <= ch <= "\u04ff"):
+            break
+        start -= 1
+    return text[start:dot_pos].casefold() in _ABBREV_DOT
