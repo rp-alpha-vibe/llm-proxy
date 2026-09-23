@@ -11,6 +11,9 @@ from llm_proxy.api.process import (
 from llm_proxy.application.overload import ConcurrencyGate
 from llm_proxy.application.process_service import ProcessService
 from llm_proxy.application.stubs import SimpleEmailDetector, SimplePlaceholderMaskStrategy
+from llm_proxy.detection.engine import PiiEngine
+from llm_proxy.detection.models import PiiType
+from llm_proxy.detection.registry import DetectorPriority, DetectorRegistry
 from llm_proxy.policies.consumer_resolver import ConfigConsumerResolver
 from llm_proxy.policies.loader import YamlPolicyRegistry
 from llm_proxy.policies.models import ConsumerResolver
@@ -26,6 +29,16 @@ def _build_consumer_resolver(settings: Settings) -> ConsumerResolver:
     return ConfigConsumerResolver(registry, settings.default_consumer_id)
 
 
+def _build_detector() -> PiiEngine:
+    registry = DetectorRegistry()
+    registry.register(
+        SimpleEmailDetector(),
+        types=(PiiType.EMAIL,),
+        priority=DetectorPriority.STRUCTURED,
+    )
+    return PiiEngine(registry)
+
+
 def _build_process_service(settings: Settings) -> ProcessService | None:
     if settings.encryption_key is None:
         return None
@@ -35,7 +48,7 @@ def _build_process_service(settings: Settings) -> ProcessService | None:
     state_store = RedisStateStore(settings.redis_url, codec)
     return ProcessService(
         state_store=state_store,
-        detector=SimpleEmailDetector(),
+        detector=_build_detector(),
         mask_strategy=SimplePlaceholderMaskStrategy(),
         session_ttl_seconds=settings.session_ttl_seconds,
         post_demask_ttl_seconds=settings.post_demask_ttl_seconds,

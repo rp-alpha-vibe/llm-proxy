@@ -106,6 +106,15 @@ class MaskResult(BaseModel):
         return self
 
 
+def apply_replacements(text: str, replacements: Sequence[tuple[int, int, str]]) -> str:
+    ordered = sorted(replacements, key=lambda item: (item[0], item[1]), reverse=True)
+    for start, end, value in ordered:
+        if start < 0 or end < start or end > len(text):
+            raise ValueError("replacement span is outside the text")
+        text = text[:start] + value + text[end:]
+    return text
+
+
 class MaskStrategy(Protocol):
     def mask(
         self,

@@ -202,15 +202,15 @@ HTTP -> policy -> ProcessService -> Redis -> result
 
 ### Tasks
 
-- [ ] E5.1 Реализовать `TextView`/normalization.
-- [ ] E5.2 Все final spans должны ссылаться на original coordinates.
-- [ ] E5.3 Если normalization меняет длину, реализовать offset map.
-- [ ] E5.4 Реализовать detector registry по `enabled PiiType`.
-- [ ] E5.5 Реализовать `ContextResolver`.
-- [ ] E5.6 Реализовать централизованный `OverlapResolver`.
-- [ ] E5.7 Priority: validated structured > context-confirmed > generic.
-- [ ] E5.8 Применять replacements справа налево.
-- [ ] E5.9 Tests: overlaps, adjacent spans, Unicode/кириллица, punctuation, case.
+- [x] E5.1 Реализовать `TextView`/normalization.
+- [x] E5.2 Все final spans должны ссылаться на original coordinates.
+- [x] E5.3 Если normalization меняет длину, реализовать offset map.
+- [x] E5.4 Реализовать detector registry по `enabled PiiType`.
+- [x] E5.5 Реализовать `ContextResolver`.
+- [x] E5.6 Реализовать централизованный `OverlapResolver`.
+- [x] E5.7 Priority: validated structured > context-confirmed > generic.
+- [x] E5.8 Применять replacements справа налево.
+- [x] E5.9 Tests: overlaps, adjacent spans, Unicode/кириллица, punctuation, case.
 
 ### Acceptance
 

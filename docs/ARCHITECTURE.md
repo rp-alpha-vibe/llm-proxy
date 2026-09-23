@@ -84,7 +84,7 @@ Status: **accepted baseline**
 health -> /healthz
 ```
 
-Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. До E5–E8 detection и masking идут через stub в `application/stubs.py`, а не через отдельные engine-модули.
+Схема задаёт целевой поток. Сейчас работают `POST /process` и `GET /healthz`. Structured logs и `GET /metrics` появляются в E12. Detection идёт через `PiiEngine`; подключённый детектор и renderer маски пока stub в `application/stubs.py`. Детекторы категорий и отдельные mask strategy — следующие эпики.
 
 Один deploy содержит приложение и Redis. Kubernetes, Kafka/RabbitMQ, PostgreSQL, Celery и отдельные microservices не входят в baseline.
 
@@ -307,7 +307,7 @@ Baseline — локальные rules/dictionaries/context scoring.
 
 Все final spans относятся к original text.
 
-Нормализация либо сохраняет длину, либо ведёт явный offset map.
+Нормализация либо сохраняет длину, либо ведёт явный offset map. Текущая `TextView` оставляет регистр, кириллицу и пунктуацию как есть и убирает только невидимые символы; spans возвращаются в координаты исходного текста.
 Замены применяются справа налево после завершения detection.
 Detector не изменяет исходный text.
 
@@ -498,7 +498,7 @@ Redis не публикуется наружу.
 
 ## 15. Структура кода
 
-Текущее дерево. Каталоги detection engine, отдельных mask strategy, observability и `scripts/package.py` не создаются, пока у них нет реализации.
+Текущее дерево. Отдельные mask strategy, observability и `scripts/package.py` не создаются, пока у них нет реализации.
 
 ```text
 src/llm_proxy/
@@ -510,7 +510,12 @@ src/llm_proxy/
 │   ├── overload.py
 │   └── stubs.py
 ├── detection/
-│   └── models.py
+│   ├── models.py
+│   ├── text_view.py
+│   ├── registry.py
+│   ├── context.py
+│   ├── overlap.py
+│   └── engine.py
 ├── masking/
 │   └── base.py
 ├── state/

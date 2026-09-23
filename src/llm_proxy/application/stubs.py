@@ -2,7 +2,13 @@ import re
 from collections.abc import Collection, Sequence
 
 from llm_proxy.detection.models import Detection, Detector, PiiType
-from llm_proxy.masking.base import MaskContext, MaskedEntity, MaskResult, MaskStrategy
+from llm_proxy.masking.base import (
+    MaskContext,
+    MaskedEntity,
+    MaskResult,
+    MaskStrategy,
+    apply_replacements,
+)
 
 _EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 
@@ -36,7 +42,6 @@ class SimplePlaceholderMaskStrategy(MaskStrategy):
     ) -> MaskResult:
         ordered = sorted(detections, key=lambda detection: detection.start)
         entities: list[MaskedEntity] = []
-        masked = text
 
         for index, detection in enumerate(ordered, start=1):
             rendered_mask = f"[[PII:{detection.type.value.upper()}:{index}]]"
@@ -50,9 +55,15 @@ class SimplePlaceholderMaskStrategy(MaskStrategy):
                 )
             )
 
-        for detection in reversed(ordered):
-            index = ordered.index(detection) + 1
-            rendered_mask = f"[[PII:{detection.type.value.upper()}:{index}]]"
-            masked = masked[: detection.start] + rendered_mask + masked[detection.end :]
-
+        masked = apply_replacements(
+            text,
+            [
+                (
+                    detection.start,
+                    detection.end,
+                    f"[[PII:{detection.type.value.upper()}:{index}]]",
+                )
+                for index, detection in enumerate(ordered, start=1)
+            ],
+        )
         return MaskResult(text=masked, entities=tuple(entities))
