@@ -1,8 +1,11 @@
 import re
+from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
+from time import perf_counter
 
-from llm_proxy.detection.models import Detector
+from llm_proxy.detection.models import Detector, PiiType
 from llm_proxy.masking.base import MaskContext, MaskStrategy
 from llm_proxy.policies.models import ConsumerContext, ConsumerPolicy
 from llm_proxy.state.models import SessionRecord, StateStore, make_session_key
@@ -29,10 +32,26 @@ class SessionStateError(ProcessServiceError):
 _PLACEHOLDER_RE = re.compile(r"\[\[[^\]]+\]\]")
 
 
+def _type_counts(pii_types: Iterable[PiiType]) -> tuple[tuple[str, int], ...]:
+    counts: Counter[str] = Counter(pii_type.value for pii_type in pii_types)
+    return tuple(sorted(counts.items()))
+
+
 @dataclass(frozen=True, slots=True)
 class ProcessResult:
     result: str
     outcome: ProcessOutcome
+    pii_type_counts: tuple[tuple[str, int], ...] = ()
+    fresh_detection: bool = False
+    detect_ms: float = 0.0
+
+    @property
+    def pii_count(self) -> int:
+        return sum(count for _, count in self.pii_type_counts)
+
+    @property
+    def pii_types(self) -> tuple[str, ...]:
+        return tuple(name for name, _ in self.pii_type_counts)
 
 
 class ProcessService:
@@ -76,7 +95,9 @@ class ProcessService:
         redis_key: str,
         payload: str,
     ) -> ProcessResult:
+        started = perf_counter()
         detections = self._detector.detect(payload, context.policy.pii_types)
+        detect_ms = (perf_counter() - started) * 1000
         mask_result = self._mask_strategy.mask(
             payload,
             detections,
@@ -100,7 +121,13 @@ class ProcessService:
             self._session_ttl_seconds,
         )
         if created:
-            return ProcessResult(mask_result.text, ProcessOutcome.MASKED)
+            return ProcessResult(
+                mask_result.text,
+                ProcessOutcome.MASKED,
+                _type_counts(item.type for item in detections),
+                True,
+                detect_ms,
+            )
 
         winner = await self._state_store.get(redis_key)
         if winner is None:
@@ -117,21 +144,22 @@ class ProcessService:
     ) -> ProcessResult:
         self._validate_record_policy(record, policy)
 
+        type_counts = _type_counts(entity.type for entity in record.entities)
         if payload == record.original_text:
-            return ProcessResult(record.masked_text, ProcessOutcome.MASKED)
+            return ProcessResult(record.masked_text, ProcessOutcome.MASKED, type_counts)
 
         if payload == record.masked_text:
             if not policy.allow_demask:
                 raise DemaskNotAllowedError()
             await self._shorten_ttl(redis_key)
-            return ProcessResult(record.original_text, ProcessOutcome.EXACT_UNMASKED)
+            return ProcessResult(record.original_text, ProcessOutcome.EXACT_UNMASKED, type_counts)
 
         if not policy.allow_demask:
             raise DemaskNotAllowedError()
 
         result = self._demask_product(payload, record)
         await self._shorten_ttl(redis_key)
-        return ProcessResult(result, ProcessOutcome.PRODUCT_DEMASKED)
+        return ProcessResult(result, ProcessOutcome.PRODUCT_DEMASKED, type_counts)
 
     async def _shorten_ttl(self, redis_key: str) -> None:
         updated = await self._state_store.update_ttl(redis_key, self._post_demask_ttl_seconds)

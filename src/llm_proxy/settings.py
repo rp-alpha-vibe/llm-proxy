@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     overload_retry_after_seconds: int = Field(default=1, ge=1, le=60)
     app_host: str = "0.0.0.0"
     app_port: int = Field(default=8000, ge=1, le=65535)
+    web_workers: int = Field(default=1, ge=1, le=32)
 
 
 def get_settings() -> Settings:

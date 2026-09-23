@@ -372,9 +372,9 @@ Security tests не находят raw PII/secrets в logs, metrics, repository 
 
 ### Tasks
 
-- [ ] E12.1 Baseline использует один structured completion event на operation, если этого достаточно для наблюдаемости без лишнего log volume; отдельные stage-events не обязательны.
-- [ ] E12.2 Completion log должен делать наблюдаемыми основные processing stages через безопасные stage/status/timing metadata и содержать operation/status/latency/pii types/count без raw PII.
-- [ ] E12.3 Реализовать metrics:
+- [x] E12.1 Baseline использует один structured completion event на operation, если этого достаточно для наблюдаемости без лишнего log volume; отдельные stage-events не обязательны.
+- [x] E12.2 Completion log должен делать наблюдаемыми основные processing stages через безопасные stage/status/timing metadata и содержать operation/status/latency/pii types/count без raw PII.
+- [x] E12.3 Реализовать metrics:
   - requests_total;
   - responses_total;
   - requests_inflight;
@@ -383,10 +383,10 @@ Security tests не находят raw PII/secrets в logs, metrics, repository 
   - processed_tokens_total;
   - redis_duration_seconds;
   - overload_rejections_total.
-- [ ] E12.4 Зафиксировать tokenizer для TPS и документировать его.
-- [ ] E12.5 Настроить Prometheus multiprocess aggregation для нескольких Uvicorn workers.
-- [ ] E12.6 Проверить, что worker aggregation отражает весь service, а не один process.
-- [ ] E12.7 Metrics/logging tests без sensitive labels/high-cardinality payload IDs.
+- [x] E12.4 Зафиксировать tokenizer для TPS и документировать его.
+- [x] E12.5 Настроить Prometheus multiprocess aggregation для нескольких Uvicorn workers.
+- [x] E12.6 Проверить, что worker aggregation отражает весь service, а не один process.
+- [x] E12.7 Metrics/logging tests без sensitive labels/high-cardinality payload IDs.
 
 ### Acceptance
 

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import Response
 
 from llm_proxy.api.process import (
     APIError,
@@ -18,6 +19,8 @@ from llm_proxy.masking.base import MaskStrategyName
 from llm_proxy.masking.competition import CompetitionMaskStrategy
 from llm_proxy.masking.placeholder import PlaceholderMaskStrategy
 from llm_proxy.masking.routing import RoutingMaskStrategy
+from llm_proxy.observability.metrics import render_metrics
+from llm_proxy.observability.middleware import observe_process
 from llm_proxy.policies.consumer_resolver import ConfigConsumerResolver
 from llm_proxy.policies.loader import YamlPolicyRegistry
 from llm_proxy.policies.models import ConsumerResolver
@@ -92,7 +95,15 @@ def create_app(
     application.add_exception_handler(RequestValidationError, validation_error_handler)
     application.add_exception_handler(APIError, api_error_handler)
     application.add_exception_handler(Exception, internal_error_handler)
+    application.middleware("http")(observe_process)
     application.include_router(create_process_router())
+
+    @application.get("/metrics", include_in_schema=False)
+    async def metrics() -> Response:
+        return Response(
+            content=render_metrics(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     @application.get("/healthz", include_in_schema=False)
     async def healthz() -> dict[str, str]:
@@ -105,9 +116,27 @@ app = create_app()
 
 
 def main() -> None:
+    import os
+    import tempfile
+    from pathlib import Path
+
     import uvicorn
 
     settings = get_settings()
+    if settings.web_workers > 1:
+        directory = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        if not directory:
+            directory = str(Path(tempfile.gettempdir()) / "llm-proxy-prometheus")
+            os.environ["PROMETHEUS_MULTIPROC_DIR"] = directory
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        uvicorn.run(
+            "llm_proxy.main:app",
+            host=settings.app_host,
+            port=settings.app_port,
+            workers=settings.web_workers,
+        )
+        return
+
     uvicorn.run(
         app,
         host=settings.app_host,

@@ -285,9 +285,15 @@ def test_encryption_key_comes_from_environment_and_real_env_is_untracked() -> No
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")
         for line in text.splitlines():
-            if "LLM_PROXY_ENCRYPTION_KEY=" not in line:
+            stripped = line.strip()
+            if stripped.startswith("#") or "LLM_PROXY_ENCRYPTION_KEY=" not in stripped:
                 continue
-            value = line.split("LLM_PROXY_ENCRYPTION_KEY=", 1)[1].strip().strip("\"'")
+            marker = "LLM_PROXY_ENCRYPTION_KEY="
+            index = stripped.find(marker)
+            prefix = stripped[:index].strip()
+            if prefix not in {"", "export"}:
+                continue
+            value = stripped[index + len(marker) :].strip().strip("\"'")
             assert value in {"", "${LLM_PROXY_ENCRYPTION_KEY:-}"}
 
 

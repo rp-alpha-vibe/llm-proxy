@@ -1,11 +1,17 @@
-from typing import Any, Final
+from collections.abc import Awaitable
+from time import perf_counter
+from typing import Any, Final, TypeVar
 
 import redis.asyncio as redis
+
+from llm_proxy.observability.metrics import redis_duration_seconds
+from llm_proxy.observability.timing import add_redis_seconds
 
 from .crypto import SessionRecordCodec
 from .models import SessionRecord, StateStore, make_session_key
 
 _DEFAULT_SOCKET_TIMEOUT: Final = 1.0
+_T = TypeVar("_T")
 
 
 class RedisStateStore(StateStore):
@@ -39,7 +45,7 @@ class RedisStateStore(StateStore):
         return make_session_key(consumer_id, payload_id)
 
     async def get(self, redis_key: str) -> SessionRecord | None:
-        value = await self._redis.get(redis_key)
+        value = await self._timed(self._redis.get(redis_key))
         if value is None:
             return None
         if isinstance(value, str):
@@ -54,17 +60,26 @@ class RedisStateStore(StateStore):
     ) -> bool:
         self._validate_ttl(ttl_seconds)
         payload = self._codec.encrypt(redis_key, record)
-        result = await self._redis.set(redis_key, payload, ex=ttl_seconds, nx=True)
+        result = await self._timed(self._redis.set(redis_key, payload, ex=ttl_seconds, nx=True))
         return bool(result)
 
     async def update_ttl(self, redis_key: str, ttl_seconds: int) -> bool:
         self._validate_ttl(ttl_seconds)
-        result = await self._redis.expire(redis_key, ttl_seconds)
+        result = await self._timed(self._redis.expire(redis_key, ttl_seconds))
         return bool(result)
 
     async def delete(self, redis_key: str) -> bool:
-        result = await self._redis.delete(redis_key)
+        result = await self._timed(self._redis.delete(redis_key))
         return bool(result)
+
+    async def _timed(self, awaitable: Awaitable[_T]) -> _T:
+        started = perf_counter()
+        try:
+            return await awaitable
+        finally:
+            elapsed = perf_counter() - started
+            add_redis_seconds(elapsed)
+            redis_duration_seconds.observe(elapsed)
 
     async def close(self) -> None:
         await self._redis.aclose()

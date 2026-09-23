@@ -411,24 +411,27 @@ Redis/network operations имеют явные короткие timeouts.
 
 ## 12. Observability
 
-Structured log одной операции содержит только безопасные metadata:
+Один structured completion event на `POST /process` содержит только безопасные metadata. Отдельные stage-events не пишутся: этапы видны в `stages`.
 
 ```json
 {
+  "event": "process_completed",
   "request_id": "...",
   "consumer": "alfa_tester",
   "operation": "mask",
+  "status": 200,
   "payload_chars": 862,
-  "pii_types": ["PERSON", "PHONE"],
+  "token_count": 120,
+  "pii_types": ["email", "phone"],
   "pii_count": 3,
   "latency_ms": 8.4,
-  "status": 200
+  "stages": {"detect_ms": 6.1, "redis_ms": 1.2, "total_ms": 8.4}
 }
 ```
 
-Запрещены raw payload и значения ПД.
+`pii_types` — канонические значения `PiiType`, без исходных значений. `request_id` — случайный id события, не `payload_id`. Запрещены raw payload и значения ПД.
 
-Минимальные metrics:
+`GET /metrics` отдаёт Prometheus exposition. Минимальные metrics:
 
 - `requests_total`;
 - `requests_inflight`;
@@ -439,8 +442,11 @@ Structured log одной операции содержит только без�
 - `redis_duration_seconds`;
 - `overload_rejections_total`.
 
-TPS вычисляется из обработанных input tokens за единицу времени.
-Tokenizer фиксируется в реализации и документируется, так как модель LLM в ТЗ не задана.
+Labels ограничены `status` и `type`. `payload_id` в labels не входит. RPS — это rate `requests_total`, latency — histogram `request_duration_seconds`.
+
+TPS считается по `processed_tokens_total`. Tokenizer — whitespace: один token это один непустой фрагмент, разделённый Unicode-пробелом. Модель LLM в ТЗ не задана, поэтому это не tokenizer конкретной модели и не официальная метрика Альфы.
+
+Несколько Uvicorn workers пишут в общий `PROMETHEUS_MULTIPROC_DIR`. `GET /metrics` собирает все живые процессы этого каталога, а не память одного worker. По умолчанию процесс один; число workers выбирает нагрузочный профиль.
 
 ## 13. Performance model
 
@@ -498,7 +504,7 @@ Redis не публикуется наружу.
 
 ## 15. Структура кода
 
-Текущее дерево. Observability и `scripts/package.py` не создаются, пока у них нет реализации.
+Текущее дерево. `scripts/package.py` не создаётся, пока у него нет реализации.
 
 ```text
 src/llm_proxy/
@@ -534,6 +540,12 @@ src/llm_proxy/
 │       ├── person.py
 │       ├── records.py
 │       └── address.py
+├── observability/
+│   ├── logging.py
+│   ├── metrics.py
+│   ├── middleware.py
+│   ├── timing.py
+│   └── tokens.py
 ├── masking/
 │   ├── base.py
 │   ├── render.py
@@ -568,7 +580,7 @@ scripts/
 
 ## 16. Verification mapping
 
-Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E11 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus и security tests на утечки. Structured logs, metrics, k6 и ZIP ещё не собраны.
+Колонка ниже — где доказательство должно появиться, а не список уже полученных результатов. Для E0–E12 есть контракт `/process`, retry, exact и product demask, изоляция политик, 429, шифрование сессии, quality corpus, security tests, structured completion log и Prometheus metrics. k6 и ZIP ещё не собраны.
 
 | Requirement | Architecture | Запланированное доказательство |
 | --- | --- | --- |

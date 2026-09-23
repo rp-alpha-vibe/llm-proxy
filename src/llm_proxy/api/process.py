@@ -11,6 +11,9 @@ from llm_proxy.application.process_service import (
     ProcessServiceError,
     SessionStateError,
 )
+from llm_proxy.observability.logging import ProcessObservation
+from llm_proxy.observability.timing import redis_seconds, start_redis_timing
+from llm_proxy.observability.tokens import count_tokens
 from llm_proxy.policies.loader import (
     ConsumerNotAllowedError,
     PolicyConfigurationError,
@@ -65,9 +68,16 @@ def create_process_router() -> APIRouter:
 
     @router.post("/process", response_model=ProcessResponse)
     async def process(payload: ProcessRequest, request: Request) -> ProcessResponse:
+        observation = ProcessObservation(
+            payload_chars=len(payload.payload),
+            token_count=count_tokens(payload.payload),
+        )
+        request.state.process_observation = observation
+        start_redis_timing()
         try:
             settings = request.app.state.settings
             context = request.app.state.consumer_resolver.resolve(settings.default_consumer_id)
+            observation.consumer = context.consumer_id
             async with request.app.state.concurrency_gate.slot():
                 service = request.app.state.process_service
                 if service is None:
@@ -77,8 +87,15 @@ def create_process_router() -> APIRouter:
                     payload.payload_id,
                     payload.payload,
                 )
+            observation.operation = result.outcome.value
+            observation.pii_types = result.pii_types
+            observation.pii_count = result.pii_count
+            observation.pii_type_counts = result.pii_type_counts
+            observation.fresh_detection = result.fresh_detection
+            observation.detect_ms = result.detect_ms
             return ProcessResponse(result=result.result)
         except APIError:
+            observation.operation = "rejected"
             raise
         except ConcurrencyLimitExceeded as exc:
             retry_after = str(request.app.state.concurrency_gate.retry_after_seconds)
@@ -103,7 +120,10 @@ def create_process_router() -> APIRouter:
         ):
             raise APIError(503, "state unavailable") from None
         except Exception:
+            observation.operation = "rejected"
             raise APIError(500, "internal error") from None
+        finally:
+            observation.redis_ms = redis_seconds() * 1000
 
     return router
 
