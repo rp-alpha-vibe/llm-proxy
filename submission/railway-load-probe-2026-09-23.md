@@ -98,16 +98,17 @@ docker run --rm ^
 
 | Метрика | Значение | Порог | Вердикт |
 | --- | --- | --- | --- |
-| HTTP reqs (всего) | 292944 | — | — |
-| `http_req_failed` | **32.95%** | 0% | **fail** |
+| Offered / успешный RPS baseline | ~1000 / **~644.8** (193444 корректных операций / 300 с) | ≥1000 успешных RPS | **fail** |
+| HTTP reqs | 289982 baseline; 292944 вместе с warmup | — | — |
+| `http_req_failed` | **33.29% baseline**; 32.95% вместе с warmup | 0% | **fail** |
 | `status_429` | **76483** | 0 на baseline | **fail** |
-| `dropped_iterations` | **10057** | 0 | **fail** |
-| p95 latency | **9.99 с** | < 1 с | **fail** |
+| `dropped_iterations` | **10019 baseline**; 10057 вместе с warmup | 0 | **fail** |
+| p50 / p95 / p99 / max latency baseline | 94.77 мс / **9.9999 с** / 10.0007 с / 10.0048 с | p95 < 1 с | **fail** |
 | Exit code | 99 | 0 | **fail** |
 
 Сырые метрики: `submission/k6-railway-baseline-1000rps-summary.json`.
 
-Railway выдерживает короткий probe 100 RPS, но не командный gate 1000 RPS / 300 с (перегрузка → 429, таймауты, dropped iterations).
+Railway выдерживает короткий probe 100 RPS, но не командный gate 1000 RPS / 300 с (перегрузка → 429, таймауты, dropped iterations). Постфактум графики Railway за окно прогона показывали пик CPU приложения около 1,2 vCPU и памяти около 280 МБ; метрики ресурсов локального генератора не сохранены. Значения Railway сняты визуально с графиков, без экспорта сырых временных рядов.
 
 ---
 
